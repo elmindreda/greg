@@ -280,6 +280,15 @@ std::string generate_file(const char* path)
   return text;
 }
 
+void write_file(const char* path, const char* content)
+{
+  std::ofstream stream(path, std::ios::out | std::ios::trunc);
+  if (stream.fail())
+    error("Failed to create file");
+
+  stream << content;
+}
+
 } /* namespace */
 
 int main(int argc, char** argv)
@@ -317,8 +326,8 @@ int main(int argc, char** argv)
   generate_manifests(document.root());
   generate_output(document.root());
 
-  std::puts(generate_file("templates/greg.h.in").c_str());
-  std::puts(generate_file("templates/greg.c.in").c_str());
+  write_file("greg.h", generate_file("templates/greg.h.in").c_str());
+  write_file("greg.c", generate_file("templates/greg.c.in").c_str());
 
   std::exit(EXIT_SUCCESS);
 }
