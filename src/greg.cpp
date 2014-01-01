@@ -30,6 +30,7 @@
 #include <cstdlib>
 
 #include <pugixml.hpp>
+#include <getopt.h>
 
 namespace
 {
@@ -63,6 +64,11 @@ Manifest required;
 Manifest removed;
 
 Output output;
+
+void usage()
+{
+  std::puts("Usage: greg [-h]");
+}
 
 void error(const char* message) [[noreturn]]
 {
@@ -278,9 +284,21 @@ std::string generate_file(const char* path)
 
 int main(int argc, char** argv)
 {
-  config.api = "gl";
-  config.version = 3.2;
-  config.extensions.insert("GL_ARB_vertex_buffer_object");
+  int ch;
+
+  while ((ch = getopt(argc, argv, "h")) != -1)
+  {
+    switch (ch)
+    {
+      case 'h':
+        usage();
+        std::exit(EXIT_SUCCESS);
+
+      default:
+        usage();
+        std::exit(EXIT_FAILURE);
+    }
+  }
 
   std::ifstream stream("spec/gl.xml");
   if (stream.fail())
@@ -291,6 +309,10 @@ int main(int argc, char** argv)
   const pugi::xml_parse_result result = document.load(stream);
   if (!result)
     error("Failed to parse file");
+
+  config.api = "gl";
+  config.version = 3.2;
+  config.extensions.insert("GL_ARB_vertex_buffer_object");
 
   generate_manifests(document.root());
   generate_output(document.root());
