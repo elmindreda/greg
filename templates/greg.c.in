@@ -21,7 +21,7 @@
  *    distribution.
  */
 
-#include <GREG/greg.h>
+#include <greg.h>
 
 static int gregValidContext(void)
 {
