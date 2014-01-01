@@ -105,6 +105,14 @@ const char* return_type(pugi::xml_node node)
     return node.child_value();
 }
 
+const char* param_type(pugi::xml_node node)
+{
+  if (auto tn = node.child("ptype"))
+    return tn.child_value();
+  else
+    return node.child_value();
+}
+
 void output_text(std::ostringstream& output, pugi::xml_node node)
 {
   for (auto child : node.children())
@@ -126,7 +134,7 @@ std::string command_params(pugi::xml_node node)
     if (count++)
       result += ", ";
 
-    result += format("%s %s", pn.child_value("ptype"), pn.child_value("name"));
+    result += format("%s %s", param_type(pn), pn.child_value("name"));
   }
 
   if (!count)
