@@ -23,10 +23,23 @@
 
 #include <GREG/greg.h>
 
+static int gregValidContext(void)
+{
+  return GL_TRUE;
+}
+
 int gregInit(void)
 {
+  if (!gregValidContext())
+    return GL_FALSE;
+
 @LOADERS@
 
   return GL_TRUE;
+}
+
+GREGglproc gregGetProcAddress(const char* name)
+{
+  return NULL;
 }
 
