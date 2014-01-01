@@ -235,7 +235,7 @@ void generate_output(pugi::xml_node root)
     std::string pointer_name = name;
     pointer_name.replace(0, 2, "greg");
 
-    output.pointers << format("%s (GLAPIENTRY *%s)(%s);\n",
+    output.pointers << format("GLAPI %s (GLAPIENTRY *%s)(%s);\n",
                               return_type(ref.node().child("proto")),
                               pointer_name.c_str(),
                               command_params(ref.node()).c_str());

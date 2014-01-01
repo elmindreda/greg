@@ -28,6 +28,35 @@
 #ifndef _greg_h_
 #define _greg_h_
 
+/* GREG replaces gl.h and glext.h */
+#define __gl_h_
+#define __GL_H__
+#define __glext_h_
+#define __GLEXT_H__
+
+/* Standardize on _WIN32 as the Windows macro */
+#if !defined(_WIN32) && (defined(__WIN32__) || defined(WIN32))
+  #define _WIN32
+#endif /* _WIN32 */
+
+/* Define GLAPI if not already defined */
+#if !defined(GLAPI)
+  #if defined(_WIN32)
+    #define GLAPI __declspec(dllimport)
+  #else
+    #define GLAPI extern
+  #endif
+#endif /* GLAPI */
+
+/* Define GLAPIENTRY if not already defined */
+#if !defined(GLAPIENTRY)
+  #if defined(_WIN32)
+    #define GLAPIENTRY __stdcall
+  #else
+    #define GLAPIENTRY
+  #endif
+#endif /* GLAPIENTRY */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
