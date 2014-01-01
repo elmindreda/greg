@@ -71,8 +71,15 @@ typedef void (*GREGglproc)(void);
 
 @DEFINES@
 
+/*! @brief Initializes the library.
+ *  @return `GL_TRUE` if successful, or `GL_FALSE` if an error occurred.
+ */
 extern int gregInit(void);
 
+/*! @brief Returns the address of the specified function.
+ *  @param[in] name The name of the desired function.
+ *  @return The address of the desired function, or `NULL` if an error occurred.
+ */
 extern GREGglproc gregGetProcAddress(const char* name);
 
 #ifdef __cplusplus
