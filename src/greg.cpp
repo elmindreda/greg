@@ -138,7 +138,7 @@ std::string command_params(pugi::xml_node node)
   }
 
   if (!count)
-    result += "void";
+    result = "void";
 
   return result;
 }
