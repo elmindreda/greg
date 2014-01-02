@@ -23,8 +23,22 @@
 
 #include <greg.h>
 
+#if defined(_WIN32)
+  #include <windows.h>
+#elif defined(__linux__)
+  #include <GL/glx.h>
+#endif
+
 static int gregValidContext(void)
 {
+#if defined(_WIN32)
+  if (!wglGetCurrentContext())
+    return GL_FALSE;
+#elif defined(__linux__)
+  if (!glXGetCurrentContext())
+    return GL_FALSE;
+#endif
+
   return GL_TRUE;
 }
 
@@ -40,6 +54,10 @@ int gregInit(void)
 
 GREGglproc gregGetProcAddress(const char* name)
 {
-  return NULL;
+#if defined(_WIN32)
+  return (GREGglproc) wglGetProcAddress(name);
+#elif defined(__linux__)
+  return (GREGglproc) glXGetProcAddress(name);
+#endif
 }
 
