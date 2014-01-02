@@ -40,6 +40,7 @@ struct Config
 {
   std::string api;
   float version;
+  bool core;
   std::unordered_set<std::string> extensions;
 };
 
@@ -169,6 +170,18 @@ void remove_from_manifest(Manifest& manifest, pugi::xml_node node)
     manifest.commands.erase(child.attribute("name").value());
 }
 
+void update_manifest(Manifest& manifest, const Config& config, pugi::xml_node node)
+{
+  for (const auto rn : node.children("require"))
+    add_to_manifest(manifest, rn);
+
+  if (config.core)
+  {
+    for (const auto rn : node.children("remove"))
+      remove_from_manifest(manifest, rn);
+  }
+}
+
 Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
 {
   Manifest manifest;
@@ -177,29 +190,19 @@ Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
   {
     const auto fn = ref.node();
 
-    if (fn.attribute("api").value() != config.api ||
-        fn.attribute("number").as_float() > config.version)
+    if (fn.attribute("api").value() == config.api &&
+        fn.attribute("number").as_float() <= config.version)
     {
-      continue;
+      update_manifest(manifest, config, fn);
     }
-
-    for (const auto rn : fn.children("require"))
-      add_to_manifest(manifest, rn);
-    for (const auto rn : fn.children("remove"))
-      remove_from_manifest(manifest, rn);
   }
 
   for (const auto ref : spec.select_nodes("/registry/extensions/extension"))
   {
     const auto en = ref.node();
 
-    if (!config.extensions.count(en.attribute("name").value()))
-      continue;
-
-    for (const auto rn : en.children("require"))
-      add_to_manifest(manifest, rn);
-    for (const auto rn : en.children("remove"))
-      remove_from_manifest(manifest, rn);
+    if (config.extensions.count(en.attribute("name").value()))
+      update_manifest(manifest, config, en);
   }
 
   for (const auto ref : spec.select_nodes("/registry/commands/command"))
@@ -368,6 +371,7 @@ int main(int argc, char** argv)
   Config config;
   config.api = "gl";
   config.version = 3.2;
+  config.core = true;
   config.extensions.insert("GL_ARB_vertex_buffer_object");
 
   const Manifest manifest = generate_manifest(config, spec);
