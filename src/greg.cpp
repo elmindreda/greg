@@ -96,6 +96,14 @@ std::string ucase(const char* string)
   return result;
 }
 
+const char* api_name(const pugi::xml_node tn)
+{
+  if (const pugi::xml_attribute aa = tn.attribute("api"))
+    return aa.value();
+  else
+    return "gl";
+}
+
 const char* type_name(const pugi::xml_node type)
 {
   if (const pugi::xml_attribute na = type.attribute("name"))
@@ -225,14 +233,16 @@ Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
   {
     const pugi::xml_node tn = ref.node();
 
-    if (manifest.types.count(type_name(tn)))
+    if (manifest.types.count(type_name(tn)) && api_name(tn) == config.api)
       manifest.types.insert(tn.attribute("requires").value());
   }
 
   return manifest;
 }
 
-Output generate_output(const Manifest& manifest, const pugi::xml_document& spec)
+Output generate_output(const Manifest& manifest,
+                       const Config& config,
+                       const pugi::xml_document& spec)
 {
   Output output;
 
@@ -240,7 +250,7 @@ Output generate_output(const Manifest& manifest, const pugi::xml_document& spec)
   {
     const pugi::xml_node tn = ref.node();
 
-    if (!manifest.types.count(type_name(tn)))
+    if (!manifest.types.count(type_name(tn)) || api_name(tn) != config.api)
       continue;
 
     output.primitive_types += format("%s\n", type_text(tn).c_str());
@@ -377,7 +387,7 @@ int main(int argc, char** argv)
   config.extensions.insert("GL_ARB_vertex_buffer_object");
 
   const Manifest manifest = generate_manifest(config, spec);
-  const Output output = generate_output(manifest, spec);
+  const Output output = generate_output(manifest, config, spec);
 
   write_file("greg.h", generate_file(output, "templates/greg.h.in").c_str());
   write_file("greg.c", generate_file(output, "templates/greg.c.in").c_str());
