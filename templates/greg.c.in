@@ -29,6 +29,8 @@
   #include <GL/glx.h>
 #endif
 
+@CMD_DEFINITIONS@
+
 static int gregValidContext(void)
 {
 #if defined(_WIN32)
@@ -47,7 +49,7 @@ int gregInit(void)
   if (!gregValidContext())
     return GL_FALSE;
 
-@LOADERS@
+@CMD_LOADERS@
 
   return GL_TRUE;
 }

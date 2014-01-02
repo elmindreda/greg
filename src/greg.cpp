@@ -25,6 +25,7 @@
 #include <sstream>
 #include <fstream>
 
+#include <cctype>
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
@@ -51,11 +52,13 @@ struct Manifest
 
 struct Output
 {
-  std::ostringstream types;
+  std::ostringstream primitive_types;
   std::ostringstream enums;
-  std::ostringstream pointers;
-  std::ostringstream defines;
-  std::ostringstream loaders;
+  std::ostringstream cmd_types;
+  std::ostringstream cmd_pointers;
+  std::ostringstream cmd_macros;
+  std::ostringstream cmd_definitions;
+  std::ostringstream cmd_loaders;
 };
 
 Config config;
@@ -89,6 +92,16 @@ std::string format(const char* format, ...)
   return buffer;
 }
 
+std::string toupper(const char* string)
+{
+  std::string result;
+
+  while (*string)
+    result.append(1, std::toupper(*string++));
+
+  return result;
+}
+
 const char* type_name(pugi::xml_node type)
 {
   if (auto na = type.attribute("name"))
@@ -113,14 +126,14 @@ const char* param_type(pugi::xml_node node)
     return node.child_value();
 }
 
-void output_text(std::ostringstream& output, pugi::xml_node node)
+void output_text(std::ostringstream& stream, pugi::xml_node node)
 {
   for (auto child : node.children())
   {
     if (child.text())
-      output << child.value();
+      stream << child.value();
 
-    output_text(output, child);
+    output_text(stream, child);
   }
 }
 
@@ -208,22 +221,18 @@ void generate_output(pugi::xml_node root)
   {
     const char* name = type_name(ref.node());
 
-    if (!required.types.count(name))
-      continue;
-    if (removed.types.count(name))
+    if (!required.types.count(name) || removed.types.count(name))
       continue;
 
-    output_text(output.types, ref.node());
-    output.types << '\n';
+    output_text(output.primitive_types, ref.node());
+    output.primitive_types << '\n';
   }
 
   for (auto ref : root.select_nodes("/registry/enums/enum"))
   {
     const char* name = ref.node().attribute("name").value();
 
-    if (!required.enums.count(name))
-      continue;
-    if (removed.enums.count(name))
+    if (!required.enums.count(name) || removed.enums.count(name))
       continue;
 
     output.enums << format("#define %s %s\n",
@@ -233,26 +242,40 @@ void generate_output(pugi::xml_node root)
 
   for (auto ref : root.select_nodes("/registry/commands/command"))
   {
-    const char* name = ref.node().child("proto").child_value("name");
+    const char* function_name = ref.node().child("proto").child_value("name");
 
-    if (!required.commands.count(name))
+    if (!required.commands.count(function_name) ||
+        removed.commands.count(function_name))
+    {
       continue;
-    if (removed.commands.count(name))
-      continue;
+    }
 
-    std::string pointer_name = name;
+    std::string typedef_name = "PFN" + toupper(function_name);
+
+    std::string pointer_name = function_name;
     pointer_name.replace(0, 2, "greg");
 
-    output.pointers << format("GLAPI %s (GLAPIENTRY *%s)(%s);\n",
-                              return_type(ref.node().child("proto")),
-                              pointer_name.c_str(),
-                              command_params(ref.node()).c_str());
+    output.cmd_types << format("typedef %s (GLAPIENTRY *%s)(%s);\n",
+                               return_type(ref.node().child("proto")),
+                               typedef_name.c_str(),
+                               command_params(ref.node()).c_str());
 
-    output.defines << format("#define %s %s\n", name, pointer_name.c_str());
+    output.cmd_pointers << format("extern %s %s;\n",
+                                  typedef_name.c_str(),
+                                  pointer_name.c_str());
 
-    output.loaders << format("  %s = gregGetProcAddress(\"%s\");\n",
-                             pointer_name.c_str(),
-                             name);
+    output.cmd_macros << format("#define %s %s\n",
+                                function_name,
+                                pointer_name.c_str());
+
+    output.cmd_definitions << format("%s %s = NULL;\n",
+                                     typedef_name.c_str(),
+                                     pointer_name.c_str());
+
+    output.cmd_loaders << format("  %s = (%s) gregGetProcAddress(\"%s\");\n",
+                                 pointer_name.c_str(),
+                                 typedef_name.c_str(),
+                                 function_name);
   }
 }
 
@@ -279,11 +302,13 @@ std::string generate_file(const char* path)
   stream.seekg(0, std::ios::beg);
   stream.read(&text[0], text.size());
 
-  replace_tag(text, "@TYPES@", output.types.str().c_str());
+  replace_tag(text, "@PRIMITIVE_TYPES@", output.primitive_types.str().c_str());
   replace_tag(text, "@ENUMS@", output.enums.str().c_str());
-  replace_tag(text, "@POINTERS@", output.pointers.str().c_str());
-  replace_tag(text, "@DEFINES@", output.defines.str().c_str());
-  replace_tag(text, "@LOADERS@", output.loaders.str().c_str());
+  replace_tag(text, "@CMD_TYPES@", output.cmd_types.str().c_str());
+  replace_tag(text, "@CMD_POINTERS@", output.cmd_pointers.str().c_str());
+  replace_tag(text, "@CMD_MACROS@", output.cmd_macros.str().c_str());
+  replace_tag(text, "@CMD_DEFINITIONS@", output.cmd_definitions.str().c_str());
+  replace_tag(text, "@CMD_LOADERS@", output.cmd_loaders.str().c_str());
 
   return text;
 }

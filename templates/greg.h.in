@@ -63,13 +63,15 @@ extern "C" {
 
 typedef void (*GREGglproc)(void);
 
-@TYPES@
+@PRIMITIVE_TYPES@
 
 @ENUMS@
 
-@POINTERS@
+@CMD_TYPES@
 
-@DEFINES@
+@CMD_POINTERS@
+
+@CMD_MACROS@
 
 /*! @brief Initializes the library.
  *  @return `GL_TRUE` if successful, or `GL_FALSE` if an error occurred.
