@@ -96,27 +96,27 @@ std::string ucase(const char* string)
   return result;
 }
 
-const char* type_name(pugi::xml_node type)
+const char* type_name(const pugi::xml_node type)
 {
-  if (const auto na = type.attribute("name"))
+  if (const pugi::xml_attribute na = type.attribute("name"))
     return na.value();
   else
     return type.child_value("name");
 }
 
-const char* cmd_type_name(pugi::xml_node node)
+const char* cmd_type_name(const pugi::xml_node node)
 {
-  if (const auto tn = node.child("ptype"))
+  if (const pugi::xml_node tn = node.child("ptype"))
     return tn.child_value();
   else
     return node.child_value();
 }
 
-std::string type_text(pugi::xml_node node)
+std::string type_text(const pugi::xml_node node)
 {
   std::string result;
 
-  for (const auto child : node.children())
+  for (const pugi::xml_node child : node.children())
   {
     if (child.text())
       result += child.value();
@@ -127,12 +127,12 @@ std::string type_text(pugi::xml_node node)
   return result;
 }
 
-std::string command_params(pugi::xml_node node)
+std::string command_params(const pugi::xml_node node)
 {
   std::string result;
   unsigned int count = 0;
 
-  for (const auto pn : node.children("param"))
+  for (const pugi::xml_node pn : node.children("param"))
   {
     if (count++)
       result += ", ";
@@ -146,38 +146,40 @@ std::string command_params(pugi::xml_node node)
   return result;
 }
 
-void add_to_manifest(Manifest& manifest, pugi::xml_node node)
+void add_to_manifest(Manifest& manifest, const pugi::xml_node node)
 {
-  for (const auto child : node.children("type"))
+  for (const pugi::xml_node child : node.children("type"))
     manifest.types.insert(child.attribute("name").value());
 
-  for (const auto child : node.children("enum"))
+  for (const pugi::xml_node child : node.children("enum"))
     manifest.enums.insert(child.attribute("name").value());
 
-  for (const auto child : node.children("command"))
+  for (const pugi::xml_node child : node.children("command"))
     manifest.commands.insert(child.attribute("name").value());
 }
 
-void remove_from_manifest(Manifest& manifest, pugi::xml_node node)
+void remove_from_manifest(Manifest& manifest, const pugi::xml_node node)
 {
-  for (const auto child : node.children("type"))
-    manifest.types.erase(child.attribute("name").value());
+  for (const pugi::xml_node tn : node.children("type"))
+    manifest.types.erase(tn.attribute("name").value());
 
-  for (const auto child : node.children("enum"))
-    manifest.enums.erase(child.attribute("name").value());
+  for (const pugi::xml_node en : node.children("enum"))
+    manifest.enums.erase(en.attribute("name").value());
 
-  for (const auto child : node.children("command"))
-    manifest.commands.erase(child.attribute("name").value());
+  for (const pugi::xml_node cn : node.children("command"))
+    manifest.commands.erase(cn.attribute("name").value());
 }
 
-void update_manifest(Manifest& manifest, const Config& config, pugi::xml_node node)
+void update_manifest(Manifest& manifest,
+                     const Config& config,
+                     const pugi::xml_node node)
 {
-  for (const auto rn : node.children("require"))
+  for (const pugi::xml_node rn : node.children("require"))
     add_to_manifest(manifest, rn);
 
   if (config.core)
   {
-    for (const auto rn : node.children("remove"))
+    for (const pugi::xml_node rn : node.children("remove"))
       remove_from_manifest(manifest, rn);
   }
 }
@@ -188,7 +190,7 @@ Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
 
   for (const auto ref : spec.select_nodes("/registry/feature"))
   {
-    const auto fn = ref.node();
+    const pugi::xml_node fn = ref.node();
 
     if (fn.attribute("api").value() == config.api &&
         fn.attribute("number").as_float() <= config.version)
@@ -199,7 +201,7 @@ Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
 
   for (const auto ref : spec.select_nodes("/registry/extensions/extension"))
   {
-    const auto en = ref.node();
+    const pugi::xml_node en = ref.node();
 
     if (config.extensions.count(en.attribute("name").value()))
       update_manifest(manifest, config, en);
@@ -207,13 +209,13 @@ Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
 
   for (const auto ref : spec.select_nodes("/registry/commands/command"))
   {
-    const auto cn = ref.node();
+    const pugi::xml_node cn = ref.node();
 
     if (manifest.commands.count(cn.child("proto").child_value("name")))
     {
-      for (const auto pn : cn.children("param"))
+      for (const pugi::xml_node pn : cn.children("param"))
       {
-        if (const auto tn = pn.child("ptype"))
+        if (const pugi::xml_node tn = pn.child("ptype"))
           manifest.types.insert(tn.child_value());
       }
     }
@@ -221,7 +223,7 @@ Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
 
   for (const auto ref : spec.select_nodes("/registry/types/type[@requires]"))
   {
-    const auto tn = ref.node();
+    const pugi::xml_node tn = ref.node();
 
     if (manifest.types.count(type_name(tn)))
       manifest.types.insert(tn.attribute("requires").value());
@@ -236,7 +238,7 @@ Output generate_output(const Manifest& manifest, const pugi::xml_document& spec)
 
   for (const auto ref : spec.select_nodes("/registry/types/type"))
   {
-    const auto tn = ref.node();
+    const pugi::xml_node tn = ref.node();
 
     if (!manifest.types.count(type_name(tn)))
       continue;
@@ -246,7 +248,7 @@ Output generate_output(const Manifest& manifest, const pugi::xml_document& spec)
 
   for (const auto ref : spec.select_nodes("/registry/enums/enum"))
   {
-    const auto en = ref.node();
+    const pugi::xml_node en = ref.node();
 
     if (!manifest.enums.count(en.attribute("name").value()))
       continue;
@@ -258,7 +260,7 @@ Output generate_output(const Manifest& manifest, const pugi::xml_document& spec)
 
   for (const auto ref : spec.select_nodes("/registry/commands/command"))
   {
-    const auto cn = ref.node();
+    const pugi::xml_node cn = ref.node();
 
     const char* function_name = cn.child("proto").child_value("name");
     if (!manifest.commands.count(function_name))
