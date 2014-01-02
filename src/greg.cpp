@@ -20,10 +20,10 @@
 // 3. This notice may not be removed or altered from any source
 //    distribution.
 
+#include <fstream>
+#include <string>
 #include <vector>
 #include <unordered_set>
-#include <sstream>
-#include <fstream>
 
 #include <cctype>
 #include <cstring>
@@ -52,21 +52,14 @@ struct Manifest
 
 struct Output
 {
-  std::ostringstream primitive_types;
-  std::ostringstream enums;
-  std::ostringstream cmd_types;
-  std::ostringstream cmd_pointers;
-  std::ostringstream cmd_macros;
-  std::ostringstream cmd_definitions;
-  std::ostringstream cmd_loaders;
+  std::string primitive_types;
+  std::string enums;
+  std::string cmd_types;
+  std::string cmd_pointers;
+  std::string cmd_macros;
+  std::string cmd_definitions;
+  std::string cmd_loaders;
 };
-
-Config config;
-
-Manifest required;
-Manifest removed;
-
-Output output;
 
 void usage()
 {
@@ -92,7 +85,7 @@ std::string format(const char* format, ...)
   return buffer;
 }
 
-std::string toupper(const char* string)
+std::string ucase(const char* string)
 {
   std::string result;
 
@@ -104,37 +97,33 @@ std::string toupper(const char* string)
 
 const char* type_name(pugi::xml_node type)
 {
-  if (auto na = type.attribute("name"))
+  if (const auto na = type.attribute("name"))
     return na.value();
   else
     return type.child_value("name");
 }
 
-const char* return_type(pugi::xml_node node)
+const char* cmd_type_name(pugi::xml_node node)
 {
-  if (auto tn = node.child("ptype"))
+  if (const auto tn = node.child("ptype"))
     return tn.child_value();
   else
     return node.child_value();
 }
 
-const char* param_type(pugi::xml_node node)
+std::string type_text(pugi::xml_node node)
 {
-  if (auto tn = node.child("ptype"))
-    return tn.child_value();
-  else
-    return node.child_value();
-}
+  std::string result;
 
-void output_text(std::ostringstream& stream, pugi::xml_node node)
-{
-  for (auto child : node.children())
+  for (const auto child : node.children())
   {
     if (child.text())
-      stream << child.value();
+      result += child.value();
 
-    output_text(stream, child);
+    result += type_text(child);
   }
+
+  return result;
 }
 
 std::string command_params(pugi::xml_node node)
@@ -142,12 +131,12 @@ std::string command_params(pugi::xml_node node)
   std::string result;
   unsigned int count = 0;
 
-  for (auto pn : node.children("param"))
+  for (const auto pn : node.children("param"))
   {
     if (count++)
       result += ", ";
 
-    result += format("%s %s", param_type(pn), pn.child_value("name"));
+    result += format("%s %s", cmd_type_name(pn), pn.child_value("name"));
   }
 
   if (!count)
@@ -156,127 +145,151 @@ std::string command_params(pugi::xml_node node)
   return result;
 }
 
-void append_to_manifest(Manifest& manifest, pugi::xml_node node)
+void add_to_manifest(Manifest& manifest, pugi::xml_node node)
 {
-  for (auto child : node.children("type"))
+  for (const auto child : node.children("type"))
     manifest.types.insert(child.attribute("name").value());
 
-  for (auto child : node.children("enum"))
+  for (const auto child : node.children("enum"))
     manifest.enums.insert(child.attribute("name").value());
 
-  for (auto child : node.children("command"))
+  for (const auto child : node.children("command"))
     manifest.commands.insert(child.attribute("name").value());
 }
 
-void append_to_manifests(pugi::xml_node node)
+void remove_from_manifest(Manifest& manifest, pugi::xml_node node)
 {
-  for (auto child : node.children("require"))
-    append_to_manifest(required, child);
+  for (const auto child : node.children("type"))
+    manifest.types.erase(child.attribute("name").value());
 
-  for (auto child : node.children("remove"))
-    append_to_manifest(removed, child);
+  for (const auto child : node.children("enum"))
+    manifest.enums.erase(child.attribute("name").value());
+
+  for (const auto child : node.children("command"))
+    manifest.commands.erase(child.attribute("name").value());
 }
 
-void generate_manifests(pugi::xml_node root)
+Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
 {
-  for (auto ref : root.select_nodes("/registry/feature"))
+  Manifest manifest;
+
+  for (const auto ref : spec.select_nodes("/registry/feature"))
   {
-    if (ref.node().attribute("api").value() != config.api)
-      continue;
-    if (ref.node().attribute("number").as_float() > config.version)
-      continue;
+    const auto fn = ref.node();
 
-    append_to_manifests(ref.node());
-  }
-
-  for (auto ref : root.select_nodes("/registry/extensions/extension"))
-  {
-    if (!config.extensions.count(ref.node().attribute("name").value()))
-      continue;
-
-    append_to_manifests(ref.node());
-  }
-
-  for (auto ref : root.select_nodes("/registry/commands/command"))
-  {
-    auto node = ref.node();
-
-    if (required.commands.count(node.child("proto").child_value("name")))
-    {
-      for (auto ref : node.select_nodes("param/ptype"))
-        required.types.insert(ref.node().child_value());
-    }
-  }
-
-  for (auto ref : root.select_nodes("/registry/types/type[@requires]"))
-  {
-    if (required.types.count(type_name(ref.node())))
-      required.types.insert(ref.node().attribute("requires").value());
-  }
-}
-
-void generate_output(pugi::xml_node root)
-{
-  for (auto ref : root.select_nodes("/registry/types/type"))
-  {
-    const char* name = type_name(ref.node());
-
-    if (!required.types.count(name) || removed.types.count(name))
-      continue;
-
-    output_text(output.primitive_types, ref.node());
-    output.primitive_types << '\n';
-  }
-
-  for (auto ref : root.select_nodes("/registry/enums/enum"))
-  {
-    const char* name = ref.node().attribute("name").value();
-
-    if (!required.enums.count(name) || removed.enums.count(name))
-      continue;
-
-    output.enums << format("#define %s %s\n",
-                           ref.node().attribute("name").value(),
-                           ref.node().attribute("value").value());
-  }
-
-  for (auto ref : root.select_nodes("/registry/commands/command"))
-  {
-    const char* function_name = ref.node().child("proto").child_value("name");
-
-    if (!required.commands.count(function_name) ||
-        removed.commands.count(function_name))
+    if (fn.attribute("api").value() != config.api ||
+        fn.attribute("number").as_float() > config.version)
     {
       continue;
     }
 
-    std::string typedef_name = "PFN" + toupper(function_name);
+    for (const auto rn : fn.children("require"))
+      add_to_manifest(manifest, rn);
+    for (const auto rn : fn.children("remove"))
+      remove_from_manifest(manifest, rn);
+  }
+
+  for (const auto ref : spec.select_nodes("/registry/extensions/extension"))
+  {
+    const auto en = ref.node();
+
+    if (!config.extensions.count(en.attribute("name").value()))
+      continue;
+
+    for (const auto rn : en.children("require"))
+      add_to_manifest(manifest, rn);
+    for (const auto rn : en.children("remove"))
+      remove_from_manifest(manifest, rn);
+  }
+
+  for (const auto ref : spec.select_nodes("/registry/commands/command"))
+  {
+    const auto cn = ref.node();
+
+    if (manifest.commands.count(cn.child("proto").child_value("name")))
+    {
+      for (const auto pn : cn.children("param"))
+      {
+        if (const auto tn = pn.child("ptype"))
+          manifest.types.insert(tn.child_value());
+      }
+    }
+  }
+
+  for (const auto ref : spec.select_nodes("/registry/types/type[@requires]"))
+  {
+    const auto tn = ref.node();
+
+    if (manifest.types.count(type_name(tn)))
+      manifest.types.insert(tn.attribute("requires").value());
+  }
+
+  return manifest;
+}
+
+Output generate_output(const Manifest& manifest, const pugi::xml_document& spec)
+{
+  Output output;
+
+  for (const auto ref : spec.select_nodes("/registry/types/type"))
+  {
+    const auto tn = ref.node();
+
+    if (!manifest.types.count(type_name(tn)))
+      continue;
+
+    output.primitive_types += format("%s\n", type_text(tn).c_str());
+  }
+
+  for (const auto ref : spec.select_nodes("/registry/enums/enum"))
+  {
+    const auto en = ref.node();
+
+    if (!manifest.enums.count(en.attribute("name").value()))
+      continue;
+
+    output.enums += format("#define %s %s\n",
+                           en.attribute("name").value(),
+                           en.attribute("value").value());
+  }
+
+  for (const auto ref : spec.select_nodes("/registry/commands/command"))
+  {
+    const auto cn = ref.node();
+
+    const char* function_name = cn.child("proto").child_value("name");
+    if (!manifest.commands.count(function_name))
+      continue;
+
+    std::string typedef_name = "PFN" + ucase(function_name);
 
     std::string pointer_name = function_name;
     pointer_name.replace(0, 2, "greg");
 
-    output.cmd_types << format("typedef %s (GLAPIENTRY *%s)(%s);\n",
-                               return_type(ref.node().child("proto")),
+    output.cmd_types += format("typedef %s (GLAPIENTRY *%s)(%s);\n",
+                               cmd_type_name(cn.child("proto")),
                                typedef_name.c_str(),
-                               command_params(ref.node()).c_str());
+                               command_params(cn).c_str());
 
-    output.cmd_pointers << format("extern %s %s;\n",
+    output.cmd_pointers += format("extern %s %s;\n",
                                   typedef_name.c_str(),
                                   pointer_name.c_str());
 
-    output.cmd_macros << format("#define %s %s\n",
+    output.cmd_macros += format("#define %s %s\n",
                                 function_name,
                                 pointer_name.c_str());
 
-    output.cmd_definitions << format("%s %s = NULL;\n",
+    output.cmd_definitions += format("%s %s = NULL;\n",
                                      typedef_name.c_str(),
                                      pointer_name.c_str());
 
-    output.cmd_loaders << format("  %s = (%s) gregGetProcAddress(\"%s\");\n",
+    output.cmd_loaders += format("  %s = (%s) gregGetProcAddress(\"%s\");\n",
                                  pointer_name.c_str(),
                                  typedef_name.c_str(),
                                  function_name);
   }
+
+  return output;
 }
 
 void replace_tag(std::string& text, const char* tag, const char* content)
@@ -288,7 +301,7 @@ void replace_tag(std::string& text, const char* tag, const char* content)
   text.replace(pos, std::strlen(tag), content);
 }
 
-std::string generate_file(const char* path)
+std::string generate_file(const Output& output, const char* path)
 {
   std::ifstream stream(path);
   if (stream.fail())
@@ -302,13 +315,13 @@ std::string generate_file(const char* path)
   stream.seekg(0, std::ios::beg);
   stream.read(&text[0], text.size());
 
-  replace_tag(text, "@PRIMITIVE_TYPES@", output.primitive_types.str().c_str());
-  replace_tag(text, "@ENUMS@", output.enums.str().c_str());
-  replace_tag(text, "@CMD_TYPES@", output.cmd_types.str().c_str());
-  replace_tag(text, "@CMD_POINTERS@", output.cmd_pointers.str().c_str());
-  replace_tag(text, "@CMD_MACROS@", output.cmd_macros.str().c_str());
-  replace_tag(text, "@CMD_DEFINITIONS@", output.cmd_definitions.str().c_str());
-  replace_tag(text, "@CMD_LOADERS@", output.cmd_loaders.str().c_str());
+  replace_tag(text, "@PRIMITIVE_TYPES@", output.primitive_types.c_str());
+  replace_tag(text, "@ENUMS@", output.enums.c_str());
+  replace_tag(text, "@CMD_TYPES@", output.cmd_types.c_str());
+  replace_tag(text, "@CMD_POINTERS@", output.cmd_pointers.c_str());
+  replace_tag(text, "@CMD_MACROS@", output.cmd_macros.c_str());
+  replace_tag(text, "@CMD_DEFINITIONS@", output.cmd_definitions.c_str());
+  replace_tag(text, "@CMD_LOADERS@", output.cmd_loaders.c_str());
 
   return text;
 }
@@ -346,21 +359,22 @@ int main(int argc, char** argv)
   if (stream.fail())
     error("File not found");
 
-  pugi::xml_document document;
+  pugi::xml_document spec;
 
-  const pugi::xml_parse_result result = document.load(stream);
+  const pugi::xml_parse_result result = spec.load(stream);
   if (!result)
     error("Failed to parse file");
 
+  Config config;
   config.api = "gl";
   config.version = 3.2;
   config.extensions.insert("GL_ARB_vertex_buffer_object");
 
-  generate_manifests(document.root());
-  generate_output(document.root());
+  const Manifest manifest = generate_manifest(config, spec);
+  const Output output = generate_output(manifest, spec);
 
-  write_file("greg.h", generate_file("templates/greg.h.in").c_str());
-  write_file("greg.c", generate_file("templates/greg.c.in").c_str());
+  write_file("greg.h", generate_file(output, "templates/greg.h.in").c_str());
+  write_file("greg.c", generate_file(output, "templates/greg.c.in").c_str());
 
   std::exit(EXIT_SUCCESS);
 }
