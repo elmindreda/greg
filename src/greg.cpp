@@ -90,6 +90,8 @@ void error(const char* message) [[noreturn]]
   std::exit(EXIT_FAILURE);
 }
 
+// Return a string created with the specified C string formatting
+//
 std::string format(const char* format, ...)
 {
   va_list vl;
@@ -103,6 +105,8 @@ std::string format(const char* format, ...)
   return buffer;
 }
 
+// Return the uppercase form of the specified string
+//
 std::string ucase(const char* string)
 {
   std::string result;
@@ -113,6 +117,9 @@ std::string ucase(const char* string)
   return result;
 }
 
+// Return the API name of a <type> element
+// Not all <type> elements have api attributes
+//
 const char* api_name(const pugi::xml_node tn)
 {
   if (const pugi::xml_attribute aa = tn.attribute("api"))
@@ -121,6 +128,9 @@ const char* api_name(const pugi::xml_node tn)
     return "gl";
 }
 
+// Return the type name of a <type> tag
+// This is either a name attribute or pcdata in a <name> element
+//
 const char* type_name(const pugi::xml_node type)
 {
   if (const pugi::xml_attribute na = type.attribute("name"))
@@ -129,6 +139,9 @@ const char* type_name(const pugi::xml_node type)
     return type.child_value("name");
 }
 
+// Return the return type of a <proto> (function prototype) element
+// This is pcdata either in this or a <ptype> sub-element
+//
 const char* return_type(const pugi::xml_node node)
 {
   if (const pugi::xml_node tn = node.child("ptype"))
@@ -137,6 +150,8 @@ const char* return_type(const pugi::xml_node node)
     return node.child_value();
 }
 
+// Return all pcdata of a <type> element, ignoring <name> elements
+//
 std::string scrape_type_text(const pugi::xml_node node)
 {
   if (std::strcmp(node.name(), "apientry") == 0)
@@ -150,6 +165,9 @@ std::string scrape_type_text(const pugi::xml_node node)
   return result;
 }
 
+// Return the relevant pcdata of a <param> element
+// Parameter names are not included in the function pointer typedefs
+//
 std::string scrape_param_text(const pugi::xml_node node)
 {
   if (std::strcmp(node.name(), "name") == 0)
@@ -163,6 +181,8 @@ std::string scrape_param_text(const pugi::xml_node node)
   return result;
 }
 
+// Return a complete C parameter declaration from a <command> element
+//
 std::string command_params(const pugi::xml_node node)
 {
   std::string result;
@@ -182,6 +202,8 @@ std::string command_params(const pugi::xml_node node)
   return result;
 }
 
+// Adds items from a <require> element to the specified manifest
+//
 void add_to_manifest(Manifest& manifest, const pugi::xml_node node)
 {
   for (const pugi::xml_node child : node.children("type"))
@@ -194,6 +216,8 @@ void add_to_manifest(Manifest& manifest, const pugi::xml_node node)
     manifest.commands.insert(child.attribute("name").value());
 }
 
+// Removes items from a <remove> element from the specified manifest
+//
 void remove_from_manifest(Manifest& manifest, const pugi::xml_node node)
 {
   for (const pugi::xml_node tn : node.children("type"))
@@ -206,6 +230,8 @@ void remove_from_manifest(Manifest& manifest, const pugi::xml_node node)
     manifest.commands.erase(cn.attribute("name").value());
 }
 
+// Applies a <feature> or <extension> element to the specified manifest
+//
 void update_manifest(Manifest& manifest,
                      const Config& config,
                      const pugi::xml_node node)
@@ -215,11 +241,16 @@ void update_manifest(Manifest& manifest,
 
   if (config.core)
   {
+    // The core profile removes types, enums and commands added by
+    // previous versions
     for (const pugi::xml_node rn : node.children("remove"))
       remove_from_manifest(manifest, rn);
   }
 }
 
+// Generates a manifest from the specified document according to the
+// specified configuration
+//
 Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
 {
   Manifest manifest;
@@ -274,6 +305,9 @@ Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
   return manifest;
 }
 
+// Generates output strings from the specified document according to the
+// specified manifest and configuration
+//
 Output generate_output(const Manifest& manifest,
                        const Config& config,
                        const pugi::xml_document& spec)
@@ -362,6 +396,8 @@ Output generate_output(const Manifest& manifest,
   return output;
 }
 
+// Replaces the specified tag with the specified text
+//
 void replace_tag(std::string& text, const char* tag, const char* content)
 {
   const size_t pos = text.find(tag);
@@ -371,6 +407,9 @@ void replace_tag(std::string& text, const char* tag, const char* content)
   text.replace(pos, std::strlen(tag), content);
 }
 
+// Returns the text of the specified file, with any tags replaced by the
+// specified output strings
+//
 std::string generate_file(const Output& output, const char* path)
 {
   std::ifstream stream(path);
@@ -404,6 +443,8 @@ std::string generate_file(const Output& output, const char* path)
   return text;
 }
 
+// Writes the specified text to the specified path
+//
 void write_file(const char* path, const char* content)
 {
   std::ofstream stream(path, std::ios::out | std::ios::trunc);

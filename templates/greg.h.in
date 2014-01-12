@@ -21,7 +21,7 @@
  *    distribution.
  */
 
-/* Parts of this file is reproduced from the OpenGL XML specification.
+/* Parts of this file are reproduced from the OpenGL XML specification.
  * Copyright (c) 2013 The Khronos Group Inc.
  */
 
@@ -52,20 +52,23 @@
 extern "C" {
 #endif
 
+/* Client API feature and extension macros */
 @VER_MACROS@
 @EXT_MACROS@
 
+/* Client API feature and extension booleans */
 @VER_DECLARATIONS@
 @EXT_DECLARATIONS@
 
+/* Client API types */
 @TYPE_TYPEDEFS@
 
+/* Client API enumeration values */
 @ENUM_DEFINITIONS@
 
+/* Client API functions */
 @CMD_TYPEDEFS@
-
 @CMD_DECLARATIONS@
-
 @CMD_MACROS@
 
 /*! @brief Initializes the library.
