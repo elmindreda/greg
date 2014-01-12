@@ -277,9 +277,7 @@ Output generate_output(const Manifest& manifest,
       continue;
 
     std::string typedef_name = "PFN" + ucase(function_name);
-
-    std::string pointer_name = function_name;
-    pointer_name.replace(0, 2, "greg");
+    std::string pointer_name = "greg_" + function_name;
 
     output.cmd_types += format("typedef %s (GLAPIENTRY *%s)(%s);\n",
                                cmd_type_name(cn.child("proto")),
