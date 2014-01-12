@@ -21,6 +21,7 @@
 //    distribution.
 
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <unordered_set>
@@ -107,7 +108,7 @@ std::string format(const char* format, ...)
 
 // Return the uppercase form of the specified string
 //
-std::string ucase(const char* string)
+std::string uppercase(const char* string)
 {
   std::string result;
 
@@ -360,7 +361,7 @@ Output generate_output(const Manifest& manifest,
     if (!manifest.commands.count(name))
       continue;
 
-    const std::string typedef_name = format("PFN%sPROC", ucase(name).c_str());
+    const std::string typedef_name = "PFN" + uppercase(name) + "PROC";
     const std::string pointer_name = format("greg_%s", name);
 
     output.cmd_typedefs += format("typedef %s (GLAPIENTRY *%s)(%s);\n",
@@ -402,14 +403,9 @@ std::string read_file(const char* path)
   if (stream.fail())
     error("File not found");
 
-  std::string text;
-
-  stream.seekg(0, std::ios::end);
-  text.resize((size_t) stream.tellg());
-  stream.seekg(0, std::ios::beg);
-  stream.read(&text[0], text.size());
-
-  return text;
+  std::ostringstream contents;
+  contents << stream.rdbuf();
+  return contents.str();
 }
 
 // Replaces the specified tag with the specified text
