@@ -66,6 +66,10 @@ static struct
 
 } _greg;
 
+@VER_DEFINITIONS@
+
+@EXT_DEFINITIONS@
+
 @CMD_DEFINITIONS@
 
 static GLboolean gregLoadLibrary(void)
@@ -187,6 +191,11 @@ static GLboolean gregValidContext(void)
   return GL_TRUE;
 }
 
+static GLboolean gregVersionSupported(int major, int minor)
+{
+  return major > _greg.major || (major == _greg.major && minor >= _greg.minor);
+}
+
 static GLboolean gregExtensionSupported(const char* name)
 {
 #if defined(GL_VERSION_3_0)
@@ -240,6 +249,10 @@ int gregInit(void)
     gregFreeLibrary();
     return GL_FALSE;
   }
+
+@VER_LOADERS@
+
+@EXT_LOADERS@
 
   gregFreeLibrary();
   return GL_TRUE;

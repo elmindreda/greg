@@ -25,6 +25,7 @@
 #include <vector>
 #include <unordered_set>
 
+#include <cmath>
 #include <cctype>
 #include <cstring>
 #include <cstdio>
@@ -44,8 +45,16 @@ struct Config
   std::unordered_set<std::string> extensions;
 };
 
+struct Version
+{
+  std::string name;
+  float number;
+};
+
 struct Manifest
 {
+  std::vector<Version> versions;
+  std::vector<std::string> extensions;
   std::unordered_set<std::string> types;
   std::unordered_set<std::string> commands;
   std::unordered_set<std::string> enums;
@@ -55,6 +64,14 @@ struct Output
 {
   std::string type_typedefs;
   std::string enum_definitions;
+  std::string ext_macros;
+  std::string ver_macros;
+  std::string ext_declarations;
+  std::string ver_declarations;
+  std::string ext_definitions;
+  std::string ver_definitions;
+  std::string ver_loaders;
+  std::string ext_loaders;
   std::string cmd_typedefs;
   std::string cmd_declarations;
   std::string cmd_macros;
@@ -199,11 +216,14 @@ Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
   for (const auto ref : spec.select_nodes("/registry/feature"))
   {
     const pugi::xml_node fn = ref.node();
+    const float number = fn.attribute("number").as_float();
 
-    if (fn.attribute("api").value() == config.api &&
-        fn.attribute("number").as_float() <= config.version)
+    if (fn.attribute("api").value() == config.api && number <= config.version)
     {
       update_manifest(manifest, config, fn);
+
+      const Version version = { fn.attribute("name").value(), number };
+      manifest.versions.push_back(version);
     }
   }
 
@@ -212,7 +232,10 @@ Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
     const pugi::xml_node en = ref.node();
 
     if (config.extensions.count(en.attribute("name").value()))
+    {
       update_manifest(manifest, config, en);
+      manifest.extensions.push_back(en.attribute("name").value());
+    }
   }
 
   for (const auto ref : spec.select_nodes("/registry/commands/command"))
@@ -245,6 +268,35 @@ Output generate_output(const Manifest& manifest,
                        const pugi::xml_document& spec)
 {
   Output output;
+
+  for (const auto extension : manifest.extensions)
+  {
+    std::string boolean_name = extension;
+    boolean_name.replace(0, 2, "GREG");
+
+    output.ext_macros += format("#define %s 1\n", extension.c_str());
+    output.ext_declarations += format("extern int %s;\n", boolean_name.c_str());
+    output.ext_definitions += format("int %s;\n", boolean_name.c_str());
+    output.ext_loaders += format("  %s = gregExtensionSupported(\"%s\");\n",
+                                 boolean_name.c_str(),
+                                 extension.c_str());
+  }
+
+  for (const auto version : manifest.versions)
+  {
+    std::string boolean_name = version.name;
+    boolean_name.replace(0, 2, "GREG");
+
+    const int major = (int) std::floor(version.number);
+    const int minor = (int) ((version.number - major) * 10);
+
+    output.ver_macros += format("#define %s 1\n", version.name.c_str());
+    output.ver_declarations += format("extern int %s;\n", boolean_name.c_str());
+    output.ver_definitions += format("int %s;\n", boolean_name.c_str());
+    output.ver_loaders += format("  %s = gregVersionSupported(%i, %i);\n",
+                                 boolean_name.c_str(),
+                                 major, minor);
+  }
 
   for (const auto ref : spec.select_nodes("/registry/types/type"))
   {
@@ -331,6 +383,14 @@ std::string generate_file(const Output& output, const char* path)
 
   replace_tag(text, "@TYPE_TYPEDEFS@", output.type_typedefs.c_str());
   replace_tag(text, "@ENUM_DEFINITIONS@", output.enum_definitions.c_str());
+  replace_tag(text, "@EXT_MACROS@", output.ext_macros.c_str());
+  replace_tag(text, "@VER_MACROS@", output.ver_macros.c_str());
+  replace_tag(text, "@EXT_DECLARATIONS@", output.ext_declarations.c_str());
+  replace_tag(text, "@VER_DECLARATIONS@", output.ver_declarations.c_str());
+  replace_tag(text, "@EXT_DEFINITIONS@", output.ext_definitions.c_str());
+  replace_tag(text, "@VER_DEFINITIONS@", output.ver_definitions.c_str());
+  replace_tag(text, "@VER_LOADERS@", output.ver_loaders.c_str());
+  replace_tag(text, "@EXT_LOADERS@", output.ext_loaders.c_str());
   replace_tag(text, "@CMD_TYPEDEFS@", output.cmd_typedefs.c_str());
   replace_tag(text, "@CMD_DECLARATIONS@", output.cmd_declarations.c_str());
   replace_tag(text, "@CMD_MACROS@", output.cmd_macros.c_str());
