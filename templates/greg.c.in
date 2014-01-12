@@ -164,7 +164,6 @@ static GLboolean gregValidContext(void)
     NULL
   };
 
-
   if (!glGetString)
     return GL_FALSE;
 

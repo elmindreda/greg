@@ -53,10 +53,10 @@ struct Manifest
 
 struct Output
 {
-  std::string primitive_types;
-  std::string enums;
-  std::string cmd_types;
-  std::string cmd_pointers;
+  std::string type_typedefs;
+  std::string enum_definitions;
+  std::string cmd_typedefs;
+  std::string cmd_declarations;
   std::string cmd_macros;
   std::string cmd_definitions;
   std::string cmd_loaders;
@@ -253,7 +253,7 @@ Output generate_output(const Manifest& manifest,
     if (!manifest.types.count(type_name(tn)) || api_name(tn) != config.api)
       continue;
 
-    output.primitive_types += format("%s\n", type_text(tn).c_str());
+    output.type_typedefs += format("%s\n", type_text(tn).c_str());
   }
 
   for (const auto ref : spec.select_nodes("/registry/enums/enum"))
@@ -263,9 +263,9 @@ Output generate_output(const Manifest& manifest,
     if (!manifest.enums.count(en.attribute("name").value()))
       continue;
 
-    output.enums += format("#define %s %s\n",
-                           en.attribute("name").value(),
-                           en.attribute("value").value());
+    output.enum_definitions += format("#define %s %s\n",
+                                      en.attribute("name").value(),
+                                      en.attribute("value").value());
   }
 
   for (const auto ref : spec.select_nodes("/registry/commands/command"))
@@ -276,23 +276,24 @@ Output generate_output(const Manifest& manifest,
     if (!manifest.commands.count(function_name))
       continue;
 
-    std::string typedef_name = "PFN" + ucase(function_name) + "PROC";
-    std::string pointer_name = "greg_" + function_name;
+    const std::string typedef_name = format("PFN%sPROC",
+                                            ucase(function_name).c_str());
+    const std::string pointer_name = format("greg_%s", function_name);
 
-    output.cmd_types += format("typedef %s (GLAPIENTRY *%s)(%s);\n",
-                               cmd_type_name(cn.child("proto")),
-                               typedef_name.c_str(),
-                               command_params(cn).c_str());
-
-    output.cmd_pointers += format("extern %s %s;\n",
+    output.cmd_typedefs += format("typedef %s (GLAPIENTRY *%s)(%s);\n",
+                                  cmd_type_name(cn.child("proto")),
                                   typedef_name.c_str(),
-                                  pointer_name.c_str());
+                                  command_params(cn).c_str());
+
+    output.cmd_declarations += format("extern %s %s;\n",
+                                      typedef_name.c_str(),
+                                      pointer_name.c_str());
 
     output.cmd_macros += format("#define %s %s\n",
                                 function_name,
                                 pointer_name.c_str());
 
-    output.cmd_definitions += format("%s %s = NULL;\n",
+    output.cmd_definitions += format("%s %s;\n",
                                      typedef_name.c_str(),
                                      pointer_name.c_str());
 
@@ -328,10 +329,10 @@ std::string generate_file(const Output& output, const char* path)
   stream.seekg(0, std::ios::beg);
   stream.read(&text[0], text.size());
 
-  replace_tag(text, "@PRIMITIVE_TYPES@", output.primitive_types.c_str());
-  replace_tag(text, "@ENUMS@", output.enums.c_str());
-  replace_tag(text, "@CMD_TYPES@", output.cmd_types.c_str());
-  replace_tag(text, "@CMD_POINTERS@", output.cmd_pointers.c_str());
+  replace_tag(text, "@TYPE_TYPEDEFS@", output.type_typedefs.c_str());
+  replace_tag(text, "@ENUM_DEFINITIONS@", output.enum_definitions.c_str());
+  replace_tag(text, "@CMD_TYPEDEFS@", output.cmd_typedefs.c_str());
+  replace_tag(text, "@CMD_DECLARATIONS@", output.cmd_declarations.c_str());
   replace_tag(text, "@CMD_MACROS@", output.cmd_macros.c_str());
   replace_tag(text, "@CMD_DEFINITIONS@", output.cmd_definitions.c_str());
   replace_tag(text, "@CMD_LOADERS@", output.cmd_loaders.c_str());
