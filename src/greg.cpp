@@ -129,7 +129,7 @@ const char* type_name(const pugi::xml_node type)
     return type.child_value("name");
 }
 
-const char* cmd_type_name(const pugi::xml_node node)
+const char* return_type(const pugi::xml_node node)
 {
   if (const pugi::xml_node tn = node.child("ptype"))
     return tn.child_value();
@@ -137,17 +137,28 @@ const char* cmd_type_name(const pugi::xml_node node)
     return node.child_value();
 }
 
-std::string type_text(const pugi::xml_node node)
+std::string scrape_type_text(const pugi::xml_node node)
 {
-  std::string result;
+  if (std::strcmp(node.name(), "apientry") == 0)
+    return "GLAPIENTRY";
+
+  std::string result = node.value();
 
   for (const pugi::xml_node child : node.children())
-  {
-    if (child.text())
-      result += child.value();
+    result += scrape_type_text(child);
 
-    result += type_text(child);
-  }
+  return result;
+}
+
+std::string scrape_param_text(const pugi::xml_node node)
+{
+  if (std::strcmp(node.name(), "name") == 0)
+    return "";
+
+  std::string result = node.value();
+
+  for (const pugi::xml_node child : node.children())
+    result += scrape_param_text(child);
 
   return result;
 }
@@ -162,7 +173,7 @@ std::string command_params(const pugi::xml_node node)
     if (count++)
       result += ", ";
 
-    result += format("%s %s", cmd_type_name(pn), pn.child_value("name"));
+    result += scrape_param_text(pn);
   }
 
   if (!count)
@@ -269,7 +280,7 @@ Output generate_output(const Manifest& manifest,
 {
   Output output;
 
-  for (const auto extension : manifest.extensions)
+  for (const auto& extension : manifest.extensions)
   {
     std::string boolean_name = extension;
     boolean_name.replace(0, 2, "GREG");
@@ -282,7 +293,7 @@ Output generate_output(const Manifest& manifest,
                                  extension.c_str());
   }
 
-  for (const auto version : manifest.versions)
+  for (const auto& version : manifest.versions)
   {
     std::string boolean_name = version.name;
     boolean_name.replace(0, 2, "GREG");
@@ -305,7 +316,7 @@ Output generate_output(const Manifest& manifest,
     if (!manifest.types.count(type_name(tn)) || api_name(tn) != config.api)
       continue;
 
-    output.type_typedefs += format("%s\n", type_text(tn).c_str());
+    output.type_typedefs += format("%s\n", scrape_type_text(tn).c_str());
   }
 
   for (const auto ref : spec.select_nodes("/registry/enums/enum"))
@@ -324,35 +335,28 @@ Output generate_output(const Manifest& manifest,
   {
     const pugi::xml_node cn = ref.node();
 
-    const char* function_name = cn.child("proto").child_value("name");
-    if (!manifest.commands.count(function_name))
+    const char* name = cn.child("proto").child_value("name");
+    if (!manifest.commands.count(name))
       continue;
 
-    const std::string typedef_name = format("PFN%sPROC",
-                                            ucase(function_name).c_str());
-    const std::string pointer_name = format("greg_%s", function_name);
+    const std::string typedef_name = format("PFN%sPROC", ucase(name).c_str());
+    const std::string pointer_name = format("greg_%s", name);
 
     output.cmd_typedefs += format("typedef %s (GLAPIENTRY *%s)(%s);\n",
-                                  cmd_type_name(cn.child("proto")),
+                                  return_type(cn.child("proto")),
                                   typedef_name.c_str(),
                                   command_params(cn).c_str());
-
     output.cmd_declarations += format("extern %s %s;\n",
                                       typedef_name.c_str(),
                                       pointer_name.c_str());
-
-    output.cmd_macros += format("#define %s %s\n",
-                                function_name,
-                                pointer_name.c_str());
-
+    output.cmd_macros += format("#define %s %s\n", name, pointer_name.c_str());
     output.cmd_definitions += format("%s %s;\n",
                                      typedef_name.c_str(),
                                      pointer_name.c_str());
-
     output.cmd_loaders += format("  %s = (%s) gregGetProcAddress(\"%s\");\n",
                                  pointer_name.c_str(),
                                  typedef_name.c_str(),
-                                 function_name);
+                                 name);
   }
 
   return output;
