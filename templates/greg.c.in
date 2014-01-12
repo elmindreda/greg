@@ -30,6 +30,9 @@
   #include <windows.h>
 #elif defined(__linux__)
   #include <GL/glx.h>
+#elif defined(__APPLE__)
+  #include <CoreFoundation/CoreFoundation.h>
+  #include <OpenGL/OpenGL.h>
 #endif
 
 typedef void (*GREGglproc)(void);
@@ -44,6 +47,11 @@ static struct
   {
     HINSTANCE instance;
   } wgl;
+#elif defined(__APPLE__)
+  struct
+  {
+    void* framework;
+  } nsgl;
 #endif
 
 } _greg;
@@ -70,6 +78,16 @@ static GLboolean gregLoadLibrary(void)
   if (!glXGetCurrentContext())
     return GL_FALSE;
 
+#elif defined(__APPLE__)
+
+  _greg.nsgl.framework =
+    CFBundleGetBundleWithIdentifier(CFSTR("com.apple.opengl"));
+  if (!_greg.nsgl.framework)
+    return GL_FALSE;
+
+  if (!CGLGetCurrentContext())
+    return GL_FALSE;
+
 #endif
 
   return GL_TRUE;
@@ -80,6 +98,9 @@ static void gregFreeLibrary(void)
 #if defined(_WIN32)
   if (_greg.wgl.instance)
     FreeLibrary(_greg.wgl.instance);
+#elif defined(__APPLE__)
+  if (_greg.nsgl.framework)
+    CFRelease(_greg.nsgl.framework);
 #endif
 }
 
@@ -93,6 +114,13 @@ static GREGglproc gregGetProcAddress(const char* name)
     proc = (GREGglproc) GetProcAddress(_greg.wgl.instance, name);
 #elif defined(__linux__)
   proc = (GREGglproc) glXGetProcAddress((const GLubyte*) name);
+#elif defined(__APPLE__)
+  CFStringRef native = CFStringCreateWithCString(kCFAllocatorDefault,
+                                                 name,
+                                                 kCFStringEncodingASCII);
+  proc = (GREGglproc) CFBundleGetFunctionPointerForName(_greg.nsgl.framework,
+                                                        native);
+  CFRelease(native);
 #endif
 
   return proc;

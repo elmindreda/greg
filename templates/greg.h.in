@@ -33,6 +33,7 @@
 #define __GL_H__
 #define __glext_h_
 #define __GLEXT_H__
+#define __gltypes_h_
 
 /* Standardize on _WIN32 as the Windows macro */
 #if !defined(_WIN32) && (defined(__WIN32__) || defined(WIN32))
