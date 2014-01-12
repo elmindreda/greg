@@ -139,22 +139,11 @@ const char* type_name(const pugi::xml_node type)
     return type.child_value("name");
 }
 
-// Return the return type of a <proto> (function prototype) element
-// This is pcdata either in this or a <ptype> sub-element
-//
-const char* return_type(const pugi::xml_node node)
-{
-  if (const pugi::xml_node tn = node.child("ptype"))
-    return tn.child_value();
-  else
-    return node.child_value();
-}
-
 // Return all pcdata of a <type> element, ignoring <name> elements
 //
 std::string scrape_type_text(const pugi::xml_node node)
 {
-  if (std::strcmp(node.name(), "apientry") == 0)
+  if (node.name() == std::string("apientry"))
     return "GLAPIENTRY";
 
   std::string result = node.value();
@@ -165,18 +154,17 @@ std::string scrape_type_text(const pugi::xml_node node)
   return result;
 }
 
-// Return the relevant pcdata of a <param> element
-// Parameter names are not included in the function pointer typedefs
+// Return only the type pcdata of a <param> or <proto> element
 //
-std::string scrape_param_text(const pugi::xml_node node)
+std::string scrape_proto_text(const pugi::xml_node node)
 {
-  if (std::strcmp(node.name(), "name") == 0)
+  if (node.name() == std::string("name"))
     return "";
 
   std::string result = node.value();
 
   for (const pugi::xml_node child : node.children())
-    result += scrape_param_text(child);
+    result += scrape_proto_text(child);
 
   return result;
 }
@@ -186,17 +174,16 @@ std::string scrape_param_text(const pugi::xml_node node)
 std::string command_params(const pugi::xml_node node)
 {
   std::string result;
-  unsigned int count = 0;
 
   for (const pugi::xml_node pn : node.children("param"))
   {
-    if (count++)
+    if (!result.empty())
       result += ", ";
 
-    result += scrape_param_text(pn);
+    result += scrape_proto_text(pn);
   }
 
-  if (!count)
+  if (result.empty())
     result = "void";
 
   return result;
@@ -314,7 +301,7 @@ Output generate_output(const Manifest& manifest,
 {
   Output output;
 
-  for (const auto& extension : manifest.extensions)
+  for (const std::string& extension : manifest.extensions)
   {
     std::string boolean_name = extension;
     boolean_name.replace(0, 2, "GREG");
@@ -327,7 +314,7 @@ Output generate_output(const Manifest& manifest,
                                  extension.c_str());
   }
 
-  for (const auto& version : manifest.versions)
+  for (const Version& version : manifest.versions)
   {
     std::string boolean_name = version.name;
     boolean_name.replace(0, 2, "GREG");
@@ -377,7 +364,7 @@ Output generate_output(const Manifest& manifest,
     const std::string pointer_name = format("greg_%s", name);
 
     output.cmd_typedefs += format("typedef %s (GLAPIENTRY *%s)(%s);\n",
-                                  return_type(cn.child("proto")),
+                                  scrape_proto_text(cn.child("proto")).c_str(),
                                   typedef_name.c_str(),
                                   command_params(cn).c_str());
     output.cmd_declarations += format("extern %s %s;\n",
@@ -396,21 +383,20 @@ Output generate_output(const Manifest& manifest,
   return output;
 }
 
-// Replaces the specified tag with the specified text
+// Writes the specified text to the specified path
 //
-void replace_tag(std::string& text, const char* tag, const char* content)
+void write_file(const char* path, const std::string& content)
 {
-  const size_t pos = text.find(tag);
-  if (pos == std::string::npos)
-    return;
+  std::ofstream stream(path, std::ios::out | std::ios::trunc);
+  if (stream.fail())
+    error("Failed to create file");
 
-  text.replace(pos, std::strlen(tag), content);
+  stream << content;
 }
 
-// Returns the text of the specified file, with any tags replaced by the
-// specified output strings
+// Returns the text of the specified file
 //
-std::string generate_file(const Output& output, const char* path)
+std::string read_file(const char* path)
 {
   std::ifstream stream(path);
   if (stream.fail())
@@ -420,38 +406,49 @@ std::string generate_file(const Output& output, const char* path)
 
   stream.seekg(0, std::ios::end);
   text.resize((size_t) stream.tellg());
-
   stream.seekg(0, std::ios::beg);
   stream.read(&text[0], text.size());
-
-  replace_tag(text, "@TYPE_TYPEDEFS@", output.type_typedefs.c_str());
-  replace_tag(text, "@ENUM_DEFINITIONS@", output.enum_definitions.c_str());
-  replace_tag(text, "@EXT_MACROS@", output.ext_macros.c_str());
-  replace_tag(text, "@VER_MACROS@", output.ver_macros.c_str());
-  replace_tag(text, "@EXT_DECLARATIONS@", output.ext_declarations.c_str());
-  replace_tag(text, "@VER_DECLARATIONS@", output.ver_declarations.c_str());
-  replace_tag(text, "@EXT_DEFINITIONS@", output.ext_definitions.c_str());
-  replace_tag(text, "@VER_DEFINITIONS@", output.ver_definitions.c_str());
-  replace_tag(text, "@VER_LOADERS@", output.ver_loaders.c_str());
-  replace_tag(text, "@EXT_LOADERS@", output.ext_loaders.c_str());
-  replace_tag(text, "@CMD_TYPEDEFS@", output.cmd_typedefs.c_str());
-  replace_tag(text, "@CMD_DECLARATIONS@", output.cmd_declarations.c_str());
-  replace_tag(text, "@CMD_MACROS@", output.cmd_macros.c_str());
-  replace_tag(text, "@CMD_DEFINITIONS@", output.cmd_definitions.c_str());
-  replace_tag(text, "@CMD_LOADERS@", output.cmd_loaders.c_str());
 
   return text;
 }
 
-// Writes the specified text to the specified path
+// Replaces the specified tag with the specified text
 //
-void write_file(const char* path, const char* content)
+void replace_tag(std::string& text,
+                 const std::string& name,
+                 const std::string& content)
 {
-  std::ofstream stream(path, std::ios::out | std::ios::trunc);
-  if (stream.fail())
-    error("Failed to create file");
+  const size_t pos = text.find(name);
+  if (pos == std::string::npos)
+    return;
 
-  stream << content;
+  text.replace(pos, name.length(), content);
+}
+
+// Returns the text of the specified file, with any tags replaced by the
+// specified output strings
+//
+std::string generate_content(const Output& output, const char* path)
+{
+  std::string text = read_file(path);
+
+  replace_tag(text, "@TYPE_TYPEDEFS@", output.type_typedefs);
+  replace_tag(text, "@ENUM_DEFINITIONS@", output.enum_definitions);
+  replace_tag(text, "@EXT_MACROS@", output.ext_macros);
+  replace_tag(text, "@VER_MACROS@", output.ver_macros);
+  replace_tag(text, "@EXT_DECLARATIONS@", output.ext_declarations);
+  replace_tag(text, "@VER_DECLARATIONS@", output.ver_declarations);
+  replace_tag(text, "@EXT_DEFINITIONS@", output.ext_definitions);
+  replace_tag(text, "@VER_DEFINITIONS@", output.ver_definitions);
+  replace_tag(text, "@VER_LOADERS@", output.ver_loaders);
+  replace_tag(text, "@EXT_LOADERS@", output.ext_loaders);
+  replace_tag(text, "@CMD_TYPEDEFS@", output.cmd_typedefs);
+  replace_tag(text, "@CMD_DECLARATIONS@", output.cmd_declarations);
+  replace_tag(text, "@CMD_MACROS@", output.cmd_macros);
+  replace_tag(text, "@CMD_DEFINITIONS@", output.cmd_definitions);
+  replace_tag(text, "@CMD_LOADERS@", output.cmd_loaders);
+
+  return text;
 }
 
 } /* namespace */
@@ -493,8 +490,8 @@ int main(int argc, char** argv)
   const Manifest manifest = generate_manifest(config, spec);
   const Output output = generate_output(manifest, config, spec);
 
-  write_file("greg.h", generate_file(output, "templates/greg.h.in").c_str());
-  write_file("greg.c", generate_file(output, "templates/greg.c.in").c_str());
+  write_file("greg.h", generate_content(output, "templates/greg.h.in"));
+  write_file("greg.c", generate_content(output, "templates/greg.c.in"));
 
   std::exit(EXIT_SUCCESS);
 }
