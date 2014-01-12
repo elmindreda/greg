@@ -39,15 +39,6 @@
   #define _WIN32
 #endif /* _WIN32 */
 
-/* Define GLAPI if not already defined */
-#if !defined(GLAPI)
-  #if defined(_WIN32)
-    #define GLAPI __declspec(dllimport)
-  #else
-    #define GLAPI extern
-  #endif
-#endif /* GLAPI */
-
 /* Define GLAPIENTRY if not already defined */
 #if !defined(GLAPIENTRY)
   #if defined(_WIN32)
@@ -60,8 +51,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef void (*GREGglproc)(void);
 
 @PRIMITIVE_TYPES@
 
@@ -77,12 +66,6 @@ typedef void (*GREGglproc)(void);
  *  @return `GL_TRUE` if successful, or `GL_FALSE` if an error occurred.
  */
 extern int gregInit(void);
-
-/*! @brief Returns the address of the specified function.
- *  @param[in] name The name of the desired function.
- *  @return The address of the desired function, or `NULL` if an error occurred.
- */
-extern GREGglproc gregGetProcAddress(const char* name);
 
 #ifdef __cplusplus
 }
