@@ -276,7 +276,7 @@ Output generate_output(const Manifest& manifest,
     if (!manifest.commands.count(function_name))
       continue;
 
-    std::string typedef_name = "PFN" + ucase(function_name);
+    std::string typedef_name = "PFN" + ucase(function_name) + "PROC";
     std::string pointer_name = "greg_" + function_name;
 
     output.cmd_types += format("typedef %s (GLAPIENTRY *%s)(%s);\n",
