@@ -27,18 +27,9 @@
 #include <stdio.h>
 
 #if defined(_WIN32)
-
-#include <windows.h>
-typedef HGLRC (WINAPI* PFNWGLGETCURRENTCONTEXTPROC)(void);
-typedef PROC (WINAPI* PFNWGLGETPROCADDRESSPROC)(LPCSTR);
-
+  #include <windows.h>
 #elif defined(__linux__)
-
-#include <dlfcn.h>
-#include <GL/glx.h>
-typedef GLXContext (*PFNGLXGETCURRENTCONTEXTPROC)(void);
-typedef void (*(*PFNGLXGETPROCADDRESSPROC)(const GLubyte*))(void);
-
+  #include <GL/glx.h>
 #endif
 
 typedef void (*GREGglproc)(void);
@@ -52,16 +43,7 @@ static struct
   struct
   {
     HINSTANCE instance;
-    PFNWGLGETCURRENTCONTEXTPROC GetCurrentContext;
-    PFNWGLGETPROCADDRESSPROC GetProcAddress;
   } wgl;
-#elif defined(__linux__)
-  struct
-  {
-    void* library;
-    PFNGLXGETCURRENTCONTEXTPROC GetCurrentContext;
-    PFNGLXGETPROCADDRESSPROC GetProcAddress;
-  } glx;
 #endif
 
 } _greg;
@@ -80,26 +62,12 @@ static GLboolean gregLoadLibrary(void)
   if (!_greg.wgl.instance)
     return GL_FALSE;
 
-  _greg.wgl.GetCurrentContext = (PFNWGLGETCURRENTCONTEXTPROC)
-    GetProcAddress(_greg.wgl.instance, "wglGetCurrentContext");
-  _greg.wgl.GetProcAddress = (PFNWGLGETPROCADDRESSPROC)
-    GetProcAddress(_greg.wgl.instance, "wglGetProcAddress");
-
-  if (!_greg.wgl.GetCurrentContext())
+  if (!wglGetCurrentContext())
     return GL_FALSE;
 
 #elif defined(__linux__)
 
-  _greg.glx.library = dlopen("libGL.so", RTLD_LAZY | RTLD_GLOBAL);
-  if (!_greg.glx.library)
-    return GL_FALSE;
-
-  _greg.glx.GetCurrentContext = (PFNGLXGETCURRENTCONTEXTPROC)
-    dlsym(_greg.glx.library, "glXGetCurrentContext");
-  _greg.glx.GetProcAddress = (PFNGLXGETPROCADDRESSPROC)
-    dlsym(_greg.glx.library, "glXGetProcAddress");
-
-  if (!_greg.glx.GetCurrentContext())
+  if (!glXGetCurrentContext())
     return GL_FALSE;
 
 #endif
@@ -112,9 +80,6 @@ static void gregFreeLibrary(void)
 #if defined(_WIN32)
   if (_greg.wgl.instance)
     FreeLibrary(_greg.wgl.instance);
-#elif defined(__linux__)
-  if (_greg.glx.library)
-    dlclose(_greg.glx.library);
 #endif
 }
 
@@ -123,7 +88,7 @@ static GREGglproc gregGetProcAddress(const char* name)
   GREGglproc proc;
 
 #if defined(_WIN32)
-  proc = (GREGglproc) _greg.wgl.GetProcAddress(name);
+  proc = (GREGglproc) wglGetProcAddress(name);
   if (!proc)
     proc = (GREGglproc) GetProcAddress(_greg.wgl.instance, name);
 #elif defined(__linux__)
