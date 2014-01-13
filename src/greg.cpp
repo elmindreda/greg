@@ -24,7 +24,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include <unordered_set>
+#include <set>
 
 #include <cmath>
 #include <cctype>
@@ -43,7 +43,7 @@ struct Config
   std::string api;
   float version;
   bool core;
-  std::unordered_set<std::string> extensions;
+  std::set<std::string> extensions;
 };
 
 struct Version
@@ -56,9 +56,9 @@ struct Manifest
 {
   std::vector<Version> versions;
   std::vector<std::string> extensions;
-  std::unordered_set<std::string> types;
-  std::unordered_set<std::string> commands;
-  std::unordered_set<std::string> enums;
+  std::set<std::string> types;
+  std::set<std::string> commands;
+  std::set<std::string> enums;
 };
 
 struct Output
