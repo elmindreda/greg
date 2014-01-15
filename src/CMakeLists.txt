@@ -7,5 +7,7 @@ endif()
 
 include_directories(${greg_SOURCE_DIR}/deps)
 
-add_executable(greg greg.cpp)
+add_executable(greg greg.cpp
+                    ${greg_SOURCE_DIR}/deps/pugixml.cpp
+                    ${greg_SOURCE_DIR}/deps/wire.cpp)
 

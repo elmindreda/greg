@@ -32,6 +32,7 @@
 #include <cstdio>
 #include <cstdlib>
 
+#include <wire.hpp>
 #include <pugixml.hpp>
 #include <getopt.h>
 
@@ -40,44 +41,44 @@ namespace
 
 struct Config
 {
-  std::string api;
+  wire::string api;
   float version;
   bool core;
-  std::set<std::string> extensions;
+  std::set<wire::string> extensions;
 };
 
 struct Version
 {
-  std::string name;
+  wire::string name;
   float number;
 };
 
 struct Manifest
 {
   std::vector<Version> versions;
-  std::vector<std::string> extensions;
-  std::set<std::string> types;
-  std::set<std::string> commands;
-  std::set<std::string> enums;
+  std::vector<wire::string> extensions;
+  std::set<wire::string> types;
+  std::set<wire::string> commands;
+  std::set<wire::string> enums;
 };
 
 struct Output
 {
-  std::string type_typedefs;
-  std::string enum_definitions;
-  std::string ext_macros;
-  std::string ver_macros;
-  std::string ext_declarations;
-  std::string ver_declarations;
-  std::string ext_definitions;
-  std::string ver_definitions;
-  std::string ver_loaders;
-  std::string ext_loaders;
-  std::string cmd_typedefs;
-  std::string cmd_declarations;
-  std::string cmd_macros;
-  std::string cmd_definitions;
-  std::string cmd_loaders;
+  wire::string type_typedefs;
+  wire::string enum_definitions;
+  wire::string ext_macros;
+  wire::string ver_macros;
+  wire::string ext_declarations;
+  wire::string ver_declarations;
+  wire::string ext_definitions;
+  wire::string ver_definitions;
+  wire::string ver_loaders;
+  wire::string ext_loaders;
+  wire::string cmd_typedefs;
+  wire::string cmd_declarations;
+  wire::string cmd_macros;
+  wire::string cmd_definitions;
+  wire::string cmd_loaders;
 };
 
 void usage()
@@ -89,33 +90,6 @@ void error(const char* message) [[noreturn]]
 {
   std::puts(message);
   std::exit(EXIT_FAILURE);
-}
-
-// Return a string created with the specified C string formatting
-//
-std::string format(const char* format, ...)
-{
-  va_list vl;
-  static char buffer[8192];
-
-  va_start(vl, format);
-  if (std::vsnprintf(buffer, sizeof(buffer), format, vl) < 0)
-    buffer[sizeof(buffer) - 1] = '\0';
-  va_end(vl);
-
-  return buffer;
-}
-
-// Return the uppercase form of the specified string
-//
-std::string uppercase(const char* string)
-{
-  std::string result;
-
-  while (*string)
-    result.append(1, std::toupper(*string++));
-
-  return result;
 }
 
 // Return the API name of a <type> element
@@ -142,12 +116,12 @@ const char* type_name(const pugi::xml_node type)
 
 // Return all pcdata of a <type> element, ignoring <name> elements
 //
-std::string scrape_type_text(const pugi::xml_node node)
+wire::string scrape_type_text(const pugi::xml_node node)
 {
-  if (node.name() == std::string("apientry"))
+  if (node.name() == wire::string("apientry"))
     return "GLAPIENTRY";
 
-  std::string result = node.value();
+  wire::string result = node.value();
 
   for (const pugi::xml_node child : node.children())
     result += scrape_type_text(child);
@@ -157,12 +131,12 @@ std::string scrape_type_text(const pugi::xml_node node)
 
 // Return only the type pcdata of a <param> or <proto> element
 //
-std::string scrape_proto_text(const pugi::xml_node node)
+wire::string scrape_proto_text(const pugi::xml_node node)
 {
-  if (node.name() == std::string("name"))
+  if (node.name() == wire::string("name"))
     return "";
 
-  std::string result = node.value();
+  wire::string result = node.value();
 
   for (const pugi::xml_node child : node.children())
     result += scrape_proto_text(child);
@@ -172,9 +146,9 @@ std::string scrape_proto_text(const pugi::xml_node node)
 
 // Return a complete C parameter declaration from a <command> element
 //
-std::string command_params(const pugi::xml_node node)
+wire::string command_params(const pugi::xml_node node)
 {
-  std::string result;
+  wire::string result;
 
   for (const pugi::xml_node pn : node.children("param"))
   {
@@ -302,33 +276,35 @@ Output generate_output(const Manifest& manifest,
 {
   Output output;
 
-  for (const std::string& extension : manifest.extensions)
+  for (const wire::string& extension : manifest.extensions)
   {
-    std::string boolean_name = extension;
-    boolean_name.replace(0, 2, "GREG");
+    wire::string boolean_name = extension;
+    if (boolean_name.starts_with("GL_"))
+        boolean_name.replace(0, 3, "GREG_");
 
-    output.ext_macros += format("#define %s 1\n", extension.c_str());
-    output.ext_declarations += format("extern int %s;\n", boolean_name.c_str());
-    output.ext_definitions += format("int %s;\n", boolean_name.c_str());
-    output.ext_loaders += format("  %s = gregExtensionSupported(\"%s\");\n",
-                                 boolean_name.c_str(),
-                                 extension.c_str());
+    output.ext_macros += wire::string("#define \1 1\n", extension);
+    output.ext_declarations += wire::string("extern int \1;\n", boolean_name);
+    output.ext_definitions += wire::string("int \1;\n", boolean_name);
+    output.ext_loaders += wire::string("  \1 = gregExtensionSupported(\"\2\");\n",
+                                       boolean_name,
+                                       extension);
   }
 
   for (const Version& version : manifest.versions)
   {
-    std::string boolean_name = version.name;
-    boolean_name.replace(0, 2, "GREG");
+    wire::string boolean_name = version.name;
+    if (boolean_name.starts_with("GL_"))
+        boolean_name.replace(0, 3, "GREG_");
 
     const int major = (int) std::floor(version.number);
     const int minor = (int) ((version.number - major) * 10);
 
-    output.ver_macros += format("#define %s 1\n", version.name.c_str());
-    output.ver_declarations += format("extern int %s;\n", boolean_name.c_str());
-    output.ver_definitions += format("int %s;\n", boolean_name.c_str());
-    output.ver_loaders += format("  %s = gregVersionSupported(%i, %i);\n",
-                                 boolean_name.c_str(),
-                                 major, minor);
+    output.ver_macros += wire::string("#define \1 1\n", version.name);
+    output.ver_declarations += wire::string("extern int \1;\n", boolean_name);
+    output.ver_definitions += wire::string("int \1;\n", boolean_name);
+    output.ver_loaders += wire::string("  \1 = gregVersionSupported(\2, \3);\n",
+                                       boolean_name,
+                                       major, minor);
   }
 
   for (const auto ref : spec.select_nodes("/registry/types/type"))
@@ -338,7 +314,7 @@ Output generate_output(const Manifest& manifest,
     if (!manifest.types.count(type_name(tn)) || api_name(tn) != config.api)
       continue;
 
-    output.type_typedefs += format("%s\n", scrape_type_text(tn).c_str());
+    output.type_typedefs += wire::string("\1\n", scrape_type_text(tn));
   }
 
   for (const auto ref : spec.select_nodes("/registry/enums/enum"))
@@ -348,37 +324,39 @@ Output generate_output(const Manifest& manifest,
     if (!manifest.enums.count(en.attribute("name").value()))
       continue;
 
-    output.enum_definitions += format("#define %s %s\n",
-                                      en.attribute("name").value(),
-                                      en.attribute("value").value());
+    output.enum_definitions += wire::string("#define \1 \2\n",
+                                            en.attribute("name").value(),
+                                            en.attribute("value").value());
   }
 
   for (const auto ref : spec.select_nodes("/registry/commands/command"))
   {
     const pugi::xml_node cn = ref.node();
 
-    const char* name = cn.child("proto").child_value("name");
-    if (!manifest.commands.count(name))
+    const wire::string function_name = cn.child("proto").child_value("name");
+    if (!manifest.commands.count(function_name))
       continue;
 
-    const std::string typedef_name = "PFN" + uppercase(name) + "PROC";
-    const std::string pointer_name = format("greg_%s", name);
+    const wire::string typedef_name("PFN\1PROC", function_name.uppercase());
+    const wire::string pointer_name("greg_\1", function_name);
 
-    output.cmd_typedefs += format("typedef %s (GLAPIENTRY *%s)(%s);\n",
-                                  scrape_proto_text(cn.child("proto")).c_str(),
-                                  typedef_name.c_str(),
-                                  command_params(cn).c_str());
-    output.cmd_declarations += format("extern %s %s;\n",
-                                      typedef_name.c_str(),
-                                      pointer_name.c_str());
-    output.cmd_macros += format("#define %s %s\n", name, pointer_name.c_str());
-    output.cmd_definitions += format("%s %s;\n",
-                                     typedef_name.c_str(),
-                                     pointer_name.c_str());
-    output.cmd_loaders += format("  %s = (%s) gregGetProcAddress(\"%s\");\n",
-                                 pointer_name.c_str(),
-                                 typedef_name.c_str(),
-                                 name);
+    output.cmd_typedefs += wire::string("typedef \1 (GLAPIENTRY *\2)(\3);\n",
+                                        scrape_proto_text(cn.child("proto")),
+                                        typedef_name,
+                                        command_params(cn));
+    output.cmd_declarations += wire::string("extern \1 \2;\n",
+                                            typedef_name,
+                                            pointer_name);
+    output.cmd_macros += wire::string("#define \1 \2\n",
+                                      function_name,
+                                      pointer_name);
+    output.cmd_definitions += wire::string("\1 \2;\n",
+                                           typedef_name,
+                                           pointer_name);
+    output.cmd_loaders += wire::string("  \1 = (\2) gregGetProcAddress(\"\3\");\n",
+                                       pointer_name,
+                                       typedef_name,
+                                       function_name);
   }
 
   return output;
@@ -386,7 +364,7 @@ Output generate_output(const Manifest& manifest,
 
 // Writes the specified text to the specified path
 //
-void write_file(const char* path, const std::string& content)
+void write_file(const char* path, const wire::string& content)
 {
   std::ofstream stream(path, std::ios::out | std::ios::trunc);
   if (stream.fail())
@@ -397,7 +375,7 @@ void write_file(const char* path, const std::string& content)
 
 // Returns the text of the specified file
 //
-std::string read_file(const char* path)
+wire::string read_file(const char* path)
 {
   std::ifstream stream(path);
   if (stream.fail())
@@ -408,41 +386,28 @@ std::string read_file(const char* path)
   return contents.str();
 }
 
-// Replaces the specified tag with the specified text
-//
-void replace_tag(std::string& text,
-                 const std::string& name,
-                 const std::string& content)
-{
-  const size_t pos = text.find(name);
-  if (pos == std::string::npos)
-    return;
-
-  text.replace(pos, name.length(), content);
-}
-
 // Returns the text of the specified file, with any tags replaced by the
 // specified output strings
 //
-std::string generate_content(const Output& output, const char* path)
+wire::string generate_content(const Output& output, const char* path)
 {
-  std::string text = read_file(path);
+  wire::string text = read_file(path);
 
-  replace_tag(text, "@TYPE_TYPEDEFS@", output.type_typedefs);
-  replace_tag(text, "@ENUM_DEFINITIONS@", output.enum_definitions);
-  replace_tag(text, "@EXT_MACROS@", output.ext_macros);
-  replace_tag(text, "@VER_MACROS@", output.ver_macros);
-  replace_tag(text, "@EXT_DECLARATIONS@", output.ext_declarations);
-  replace_tag(text, "@VER_DECLARATIONS@", output.ver_declarations);
-  replace_tag(text, "@EXT_DEFINITIONS@", output.ext_definitions);
-  replace_tag(text, "@VER_DEFINITIONS@", output.ver_definitions);
-  replace_tag(text, "@VER_LOADERS@", output.ver_loaders);
-  replace_tag(text, "@EXT_LOADERS@", output.ext_loaders);
-  replace_tag(text, "@CMD_TYPEDEFS@", output.cmd_typedefs);
-  replace_tag(text, "@CMD_DECLARATIONS@", output.cmd_declarations);
-  replace_tag(text, "@CMD_MACROS@", output.cmd_macros);
-  replace_tag(text, "@CMD_DEFINITIONS@", output.cmd_definitions);
-  replace_tag(text, "@CMD_LOADERS@", output.cmd_loaders);
+  text = text.replace("@TYPE_TYPEDEFS@", output.type_typedefs);
+  text = text.replace("@ENUM_DEFINITIONS@", output.enum_definitions);
+  text = text.replace("@EXT_MACROS@", output.ext_macros);
+  text = text.replace("@VER_MACROS@", output.ver_macros);
+  text = text.replace("@EXT_DECLARATIONS@", output.ext_declarations);
+  text = text.replace("@VER_DECLARATIONS@", output.ver_declarations);
+  text = text.replace("@EXT_DEFINITIONS@", output.ext_definitions);
+  text = text.replace("@VER_DEFINITIONS@", output.ver_definitions);
+  text = text.replace("@VER_LOADERS@", output.ver_loaders);
+  text = text.replace("@EXT_LOADERS@", output.ext_loaders);
+  text = text.replace("@CMD_TYPEDEFS@", output.cmd_typedefs);
+  text = text.replace("@CMD_DECLARATIONS@", output.cmd_declarations);
+  text = text.replace("@CMD_MACROS@", output.cmd_macros);
+  text = text.replace("@CMD_DEFINITIONS@", output.cmd_definitions);
+  text = text.replace("@CMD_LOADERS@", output.cmd_loaders);
 
   return text;
 }
