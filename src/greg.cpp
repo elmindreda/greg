@@ -297,7 +297,7 @@ Output generate_output(const Manifest& manifest,
         boolean_name.replace(0, 3, "GREG_");
 
     const int major = (int) std::floor(version.number);
-    const int minor = (int) ((version.number - major) * 10);
+    const int minor = (int) ((version.number - (float) major) * 10.f);
 
     output.ver_macros += wire::string("#define \1 1\n", version.name);
     output.ver_declarations += wire::string("extern int \1;\n", boolean_name);
