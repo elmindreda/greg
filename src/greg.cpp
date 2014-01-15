@@ -39,6 +39,14 @@
 namespace
 {
 
+enum Option
+{
+  API,
+  CORE,
+  VERSION,
+  EXTENSIONS
+};
+
 struct Config
 {
   wire::string api;
@@ -83,7 +91,12 @@ struct Output
 
 void usage()
 {
-  std::puts("Usage: greg [-h]");
+  std::puts("Usage: greg [OPTION]...");
+  std::puts("Options:");
+  std::puts("  --api=API                client API to generate loader for");
+  std::puts("  --core                   use the core profile (OpenGL only)");
+  std::puts("  --version=VERSION        highest API version to generate for");
+  std::puts("  --extensions=EXTENSIONS  list of extensions to generate for");
 }
 
 void error(const char* message) [[noreturn]]
@@ -297,7 +310,7 @@ Output generate_output(const Manifest& manifest,
         boolean_name.replace(0, 3, "GREG_");
 
     const int major = (int) std::floor(version.number);
-    const int minor = (int) ((version.number - (float) major) * 10.f);
+    const int minor = (int) ((version.number - (float) major) * 10.5f);
 
     output.ver_macros += wire::string("#define \1 1\n", version.name);
     output.ver_declarations += wire::string("extern int \1;\n", boolean_name);
@@ -418,10 +431,37 @@ int main(int argc, char** argv)
 {
   int ch;
 
-  while ((ch = getopt(argc, argv, "h")) != -1)
+  Config config = { "gl", 4.4, false };
+  wire::string target = ".";
+  const option options[] =
+  {
+    { "api", 1, NULL, Option::API },
+    { "core", 0, NULL, Option::CORE },
+    { "version", 1, NULL, Option::VERSION },
+    { "extensions", 1, NULL, Option::EXTENSIONS }
+  };
+
+  while ((ch = getopt_long(argc, argv, "h", options, NULL)) != -1)
   {
     switch (ch)
     {
+      case Option::API:
+        config.api = optarg;
+        break;
+
+      case Option::CORE:
+        config.core = true;
+        break;
+
+      case Option::VERSION:
+        config.version = wire::as<float>(optarg);
+        break;
+
+      case Option::EXTENSIONS:
+        for (auto e : wire::string(optarg).split(","))
+          config.extensions.insert(e);
+        break;
+
       case 'h':
         usage();
         std::exit(EXIT_SUCCESS);
@@ -442,17 +482,11 @@ int main(int argc, char** argv)
   if (!result)
     error("Failed to parse file");
 
-  Config config;
-  config.api = "gl";
-  config.version = 3.2;
-  config.core = true;
-  config.extensions.insert("GL_ARB_vertex_buffer_object");
-
   const Manifest manifest = generate_manifest(config, spec);
   const Output output = generate_output(manifest, config, spec);
 
-  write_file("greg.h", generate_content(output, "templates/greg.h.in"));
-  write_file("greg.c", generate_content(output, "templates/greg.c.in"));
+  write_file("output/greg.h", generate_content(output, "templates/greg.h.in"));
+  write_file("output/greg.c", generate_content(output, "templates/greg.c.in"));
 
   std::exit(EXIT_SUCCESS);
 }
