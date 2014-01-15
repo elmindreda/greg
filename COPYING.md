@@ -1,4 +1,4 @@
-GREG — オープンジーエルエクステンションジェネレータ 
+greg - an OpenGL extension loader generator
 Copyright © Camilla Berglund <dreda@dreda.org>
 
 This software is provided 'as-is', without any express or implied
