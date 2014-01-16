@@ -1,7 +1,7 @@
 # GREG
 
 **GREG** is a code generator that produces an OpenGL core and extension function
-API loader library and assocaiated header, tailored to your needs.  It is
+API loader library and associated header, tailored to your needs.  It is
 lovingly sculpted from a block of pure frustration with the large number of
 promising and yet ultimately unusable loader generators out there.
 
