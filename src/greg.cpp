@@ -20,6 +20,7 @@
 // 3. This notice may not be removed or altered from any source
 //    distribution.
 
+#include <iostream>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -27,9 +28,7 @@
 #include <set>
 
 #include <cmath>
-#include <cctype>
 #include <cstring>
-#include <cstdio>
 #include <cstdlib>
 
 #include <wire.hpp>
