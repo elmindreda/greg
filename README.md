@@ -44,6 +44,15 @@ sometimes.
 
 Here is the [Wikipedia page for lettuce](https://en.wikipedia.org/wiki/Lettuce).
 
+### Why is there no support for [GLWT](https://github.com/rikusalminen/glwt)?
+
+GLWT does not provide the functions needed to allow GREG to load through it, but
+GLWT will co-exist just fine with the native backends.
+
+### Why is there no support for GLUT?
+
+Here is the [Wikipedia page for yarn](https://en.wikipedia.org/wiki/Yarn).
+
 
 ## Dependencies
 
