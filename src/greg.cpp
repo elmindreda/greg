@@ -246,11 +246,25 @@ Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
   for (const auto ref : spec.select_nodes("/registry/extensions/extension"))
   {
     const pugi::xml_node en = ref.node();
+    const wire::string name(en.attribute("name").value());
 
-    if (config.extensions.count(en.attribute("name").value()))
+    if (config.extensions.count(name))
     {
+      wire::string api = config.api;
+      if (config.api == "gl" && config.core)
+        api = "glcore";
+
+      const wire::strings apis =
+        wire::string(en.attribute("supported").value()).split("|");
+
+      if (std::find(apis.begin(), apis.end(), api) == apis.end())
+      {
+        std::cout << wire::string("Excluding unsupported extension \1\n", name);
+        continue;
+      }
+
       update_manifest(manifest, config, en);
-      manifest.extensions.push_back(en.attribute("name").value());
+      manifest.extensions.push_back(name);
     }
   }
 
