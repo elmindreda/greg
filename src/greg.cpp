@@ -379,7 +379,7 @@ Output generate_output(const Manifest& manifest,
 //
 void write_file(const char* path, const wire::string& content)
 {
-  std::ofstream stream(path, std::ios::out | std::ios::trunc);
+  std::ofstream stream(path, std::ios::out | std::ios::trunc | std::ios::binary);
   if (stream.fail())
     error("Failed to create file");
 
@@ -390,7 +390,7 @@ void write_file(const char* path, const wire::string& content)
 //
 wire::string read_file(const char* path)
 {
-  std::ifstream stream(path);
+  std::ifstream stream(path, std::ios::in | std::ios::binary);
   if (stream.fail())
     error("File not found");
 
