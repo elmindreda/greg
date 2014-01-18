@@ -26,7 +26,9 @@
 #include <string.h>
 #include <stdio.h>
 
-#if defined(_GREG_USE_GLFW3)
+#if defined(_GREG_USE_EGL)
+  #include <EGL/egl.h>
+#elif defined(_GREG_USE_GLFW3)
   #include <GLFW/glfw3.h>
 #elif defined(_GREG_USE_SDL2)
   #include <SDL/SDL.h>
@@ -46,7 +48,8 @@ static struct
   int major;
   int minor;
 
-#if defined(_GREG_USE_GLFW3)
+#if defined(_GREG_USE_EGL)
+#elif defined(_GREG_USE_GLFW3)
 #elif defined(_GREG_USE_SDL2)
 #elif defined(_WIN32)
   struct
@@ -70,7 +73,10 @@ static struct
 
 static GLboolean gregLoadLibrary(void)
 {
-#if defined(_GREG_USE_GLFW3)
+#if defined(_GREG_USE_EGL)
+  if (eglGetCurrentContext() == EGL_NO_CONTEXT)
+    return GL_FALSE;
+#elif defined(_GREG_USE_GLFW3)
   if (!glfwGetCurrentContext())
     return GL_FALSE;
 #elif defined(_GREG_USE_SDL2)
@@ -100,7 +106,9 @@ static GLboolean gregLoadLibrary(void)
 
 static void gregFreeLibrary(void)
 {
-#if defined(_GREG_USE_GLFW3)
+#if defined(_GREG_USE_EGL)
+  // Nothing to do here
+#elif defined(_GREG_USE_GLFW3)
   // Nothing to do here
 #elif defined(_GREG_USE_SDL2)
   SDL_GL_UnloadLibrary();
@@ -119,7 +127,9 @@ static GREGglproc gregGetProcAddress(const char* name)
 {
   GREGglproc proc;
 
-#if defined(_GREG_USE_GLFW3)
+#if defined(_GREG_USE_EGL)
+  proc = (GREGglproc) eglGetProcAddress(name);
+#elif defined(_GREG_USE_GLFW3)
   proc = (GREGglproc) glfwGetProcAddress(name);
 #elif defined(_GREG_USE_SDL2)
   proc = (GREGglproc) SDL_GL_GetProcAddress(name);
