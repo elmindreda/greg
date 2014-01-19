@@ -451,7 +451,8 @@ int main(int argc, char** argv)
     { "api", 1, NULL, Option::API },
     { "core", 0, NULL, Option::CORE },
     { "version", 1, NULL, Option::VERSION },
-    { "extensions", 1, NULL, Option::EXTENSIONS }
+    { "extensions", 1, NULL, Option::EXTENSIONS },
+    { NULL, 0, NULL, 0 }
   };
 
   while ((ch = getopt_long(argc, argv, "h", options, NULL)) != -1)
