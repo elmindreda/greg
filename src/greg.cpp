@@ -126,7 +126,8 @@ const char* type_name(const pugi::xml_node type)
     return type.child_value("name");
 }
 
-// Return all pcdata of a <type> element, ignoring <name> elements
+// Return only the type pcdata of a <type> element
+// Any <apientry/> elements are replaced with the standard GLAPIENTRY
 //
 wire::string scrape_type_text(const pugi::xml_node node)
 {
@@ -141,7 +142,8 @@ wire::string scrape_type_text(const pugi::xml_node node)
   return result;
 }
 
-// Return only the type pcdata of a <param> or <proto> element
+// Return all pcdata of a <param> or <proto> element, ignoring <name> elements
+// This is used to scrape C type text for a parameter or return type
 //
 wire::string scrape_proto_text(const pugi::xml_node node)
 {
