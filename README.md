@@ -69,3 +69,8 @@ dependencies.  These are:
 The *output* of GREG requires only a C89 compiler and headers for the selected
 backend.
 
+GREG has been successfully built with the following C++11 compilers:
+
+ - Clang 3.0 with libstdc++
+ - Visual C++ 12.0 (VS 2013)
+
