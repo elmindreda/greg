@@ -523,7 +523,7 @@ namespace wire
                         match_length = target.size();
 
                     if( this->size() - i >= target.size() )
-                    if( !std::memcmp( &this->at(i), &target.at(0), match_length ) )
+                    if( !std::memcmp( &this->at(int(i)), &target.at(0), match_length ) )
                     {
                         i += target.size();
 
@@ -534,7 +534,7 @@ namespace wire
                 }
 
                 if( !found )
-                    out += this->at(i++);
+                    out += this->at(int(i++));
             }
 
            return out;
@@ -549,11 +549,11 @@ namespace wire
             if( charslen == 0 )
             {
                 if( strip_left )
-                    while( i < len && std::isspace( this->operator[]( i ) ))
+                    while( i < len && std::isspace( this->operator[]( int(i) ) ))
                         i++;
 
                 if( strip_right && j ) {
-                    do j--; while( j >= i && std::isspace( this->operator[]( j ) ));
+                    do j--; while( j >= i && std::isspace( this->operator[]( int(j) ) ));
                     j++;
                 }
             }
@@ -562,11 +562,11 @@ namespace wire
                 const char *sep = chars.c_str();
 
                 if( strip_left )
-                    while( i < len && std::memchr( sep, this->operator[]( i ), charslen ))
+                    while( i < len && std::memchr( sep, this->operator[]( int(i) ), charslen ))
                         i++;
 
                 if( strip_right && j ) {
-                    do j--; while( j >= i && std::memchr( sep, this->operator[]( j ), charslen ));
+                    do j--; while( j >= i && std::memchr( sep, this->operator[]( int(j) ), charslen ));
                     j++;
                 }
             }

@@ -98,7 +98,7 @@ void usage()
   std::puts("  --extensions=EXTENSIONS  list of extensions to generate for");
 }
 
-void error(const char* message) [[noreturn]]
+void error(const char* message)
 {
   std::puts(message);
   std::exit(EXIT_FAILURE);
@@ -444,7 +444,7 @@ int main(int argc, char** argv)
 {
   int ch;
 
-  Config config = { "gl", 4.4, false };
+  Config config = { "gl", 4.4f, false };
   wire::string target = ".";
   const option options[] =
   {
