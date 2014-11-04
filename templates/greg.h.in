@@ -49,6 +49,12 @@
   #endif
 #endif /* GLAPIENTRY */
 
+#if defined(GREG_STATIC)
+  #define GREGDEF static
+#else
+  #define GREGDEF extern
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -75,10 +81,268 @@ extern "C" {
 /*! @brief Initializes the library.
  *  @return `GL_TRUE` if successful, or `GL_FALSE` if an error occurred.
  */
-extern int gregInit(void);
+GREGDEF int gregInit(void);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* _greg_h_ */
+
+#ifdef GREG_IMPLEMENTATION
+
+#include <string.h>
+#include <stdio.h>
+
+#if defined(GREG_USE_EGL)
+  #include <EGL/egl.h>
+#elif defined(GREG_USE_GLFW3)
+  #include <GLFW/glfw3.h>
+#elif defined(GREG_USE_SDL2)
+  #include <SDL/SDL.h>
+#elif defined(_WIN32)
+  #include <windows.h>
+#elif defined(__linux__)
+  #include <GL/glx.h>
+#elif defined(__APPLE__)
+  #include <CoreFoundation/CoreFoundation.h>
+  #include <OpenGL/OpenGL.h>
+#endif
+
+typedef void (*GREGglproc)(void);
+
+static struct
+{
+  int major;
+  int minor;
+
+#if defined(GREG_USE_EGL)
+#elif defined(GREG_USE_GLFW3)
+#elif defined(GREG_USE_SDL2)
+#elif defined(_WIN32)
+  struct
+  {
+    HINSTANCE instance;
+  } wgl;
+#elif defined(__APPLE__)
+  struct
+  {
+    void* framework;
+  } nsgl;
+#endif
+
+} _greg;
+
+@VER_DEFINITIONS@
+
+@EXT_DEFINITIONS@
+
+@CMD_DEFINITIONS@
+
+static GLboolean gregHasContext(void)
+{
+#if defined(GREG_USE_EGL)
+  return eglGetCurrentContext() != EGL_NO_CONTEXT;
+#elif defined(GREG_USE_GLFW3)
+  return glfwGetCurrentContext() != NULL;
+#elif defined(GREG_USE_SDL2)
+  return SDL_GL_GetCurrentContext() != NULL;
+#elif defined(_WIN32)
+  return wglGetCurrentContext() != NULL;
+#elif defined(__linux__)
+  return glXGetCurrentContext() != NULL;
+#elif defined(__APPLE__)
+  return CGLGetCurrentContext() != NULL;
+#endif
+}
+
+static GLboolean gregLoadLibrary(void)
+{
+#if defined(GREG_USE_EGL)
+#elif defined(GREG_USE_GLFW3)
+#elif defined(GREG_USE_SDL2)
+  if (SDL_GL_LoadLibrary(NULL) != 0)
+    return GL_FALSE;
+#elif defined(_WIN32)
+  _greg.wgl.instance = LoadLibraryA("opengl32.dll");
+  if (!_greg.wgl.instance)
+    return GL_FALSE;
+#elif defined(__linux__)
+#elif defined(__APPLE__)
+  _greg.nsgl.framework = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.opengl"));
+  if (!_greg.nsgl.framework)
+    return GL_FALSE;
+#endif
+
+  return GL_TRUE;
+}
+
+static void gregFreeLibrary(void)
+{
+#if defined(GREG_USE_EGL)
+#elif defined(GREG_USE_GLFW3)
+#elif defined(GREG_USE_SDL2)
+  SDL_GL_UnloadLibrary();
+#elif defined(_WIN32)
+  if (_greg.wgl.instance)
+    FreeLibrary(_greg.wgl.instance);
+#elif defined(__linux__)
+#elif defined(__APPLE__)
+  if (_greg.nsgl.framework)
+    CFRelease(_greg.nsgl.framework);
+#endif
+}
+
+static GREGglproc gregGetProcAddress(const char* name)
+{
+  GREGglproc proc;
+
+#if defined(GREG_USE_EGL)
+  proc = (GREGglproc) eglGetProcAddress(name);
+#elif defined(GREG_USE_GLFW3)
+  proc = (GREGglproc) glfwGetProcAddress(name);
+#elif defined(GREG_USE_SDL2)
+  proc = (GREGglproc) SDL_GL_GetProcAddress(name);
+#elif defined(_WIN32)
+  proc = (GREGglproc) wglGetProcAddress(name);
+  if (!proc)
+    proc = (GREGglproc) GetProcAddress(_greg.wgl.instance, name);
+#elif defined(__linux__)
+  proc = (GREGglproc) glXGetProcAddress((const GLubyte*) name);
+#elif defined(__APPLE__)
+  CFStringRef native = CFStringCreateWithCString(kCFAllocatorDefault, name, kCFStringEncodingASCII);
+  proc = (GREGglproc) CFBundleGetFunctionPointerForName(_greg.nsgl.framework, native);
+  CFRelease(native);
+#endif
+
+  return proc;
+}
+
+static GLboolean gregStringInExtensionString(const char* string,
+                                             const char* extensions)
+{
+  const char* start = extensions;
+
+  for (;;)
+  {
+    const char* end;
+    const char* where = strstr(start, string);
+    if (!where)
+      return GL_FALSE;
+
+    end = where + strlen(string);
+    if (where == start || *(where - 1) == ' ')
+    {
+      if (*end == ' ' || *end == '\0')
+        return GL_TRUE;
+    }
+
+    start = end;
+  }
+}
+
+static GLboolean gregValidContext(void)
+{
+  int i;
+  const char* version;
+  const char* prefixes[] =
+  {
+    "OpenGL ES-CM ",
+    "OpenGL ES-CL ",
+    "OpenGL ES ",
+    NULL
+  };
+
+  if (!glGetString)
+    return GL_FALSE;
+
+  version = (const char*) glGetString(GL_VERSION);
+  if (!version)
+    return GL_FALSE;
+
+  for (i = 0;  prefixes[i];  i++)
+  {
+    const size_t length = strlen(prefixes[i]);
+    if (strncmp(version, prefixes[i], length) == 0)
+    {
+      version += length;
+      break;
+    }
+  }
+
+  if (!sscanf(version, "%d.%d", &_greg.major, &_greg.minor))
+    return GL_FALSE;
+
+  return GL_TRUE;
+}
+
+static GLboolean gregVersionSupported(int major, int minor)
+{
+  return major > _greg.major || (major == _greg.major && minor >= _greg.minor);
+}
+
+static GLboolean gregExtensionSupported(const char* name)
+{
+  const char* e;
+
+#if defined(GL_VERSION_3_0)
+  if (_greg.major >= 3)
+  {
+    GLint i, count;
+
+    if (!glGetIntegerv || !glGetStringi)
+      return GL_FALSE;
+
+    glGetIntegerv(GL_NUM_EXTENSIONS, &count);
+
+    for (i = 0;  i < count;  i++)
+    {
+      e = (const char*) glGetStringi(GL_EXTENSIONS, i);
+      if (!e)
+        return GL_FALSE;
+
+      if (strcmp(e, name) == 0)
+        return GL_TRUE;
+    }
+
+    return GL_FALSE;
+  }
+#endif /*GL_VERSION_3_0*/
+
+  if (!glGetString)
+    return GL_FALSE;
+
+  e = (const char*) glGetString(GL_EXTENSIONS);
+  if (!e)
+    return GL_FALSE;
+
+  return gregStringInExtensionString(name, e);
+}
+
+GREGDEF int gregInit(void)
+{
+  memset(&_greg, 0, sizeof(_greg));
+
+  if (!gregHasContext() || !gregLoadLibrary())
+  {
+    gregFreeLibrary();
+    return GL_FALSE;
+  }
+
+@CMD_LOADERS@
+
+  if (!gregValidContext())
+  {
+    gregFreeLibrary();
+    return GL_FALSE;
+  }
+
+@VER_LOADERS@
+
+@EXT_LOADERS@
+
+  gregFreeLibrary();
+  return GL_TRUE;
+}
+
+#endif /*GREG_IMPLEMENTATION*/

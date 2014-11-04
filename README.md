@@ -1,9 +1,9 @@
 # GREG
 
-**GREG** is a code generator that produces an OpenGL core and extension function
-API loader library and associated header, tailored to your needs.  It is
-lovingly sculpted from a block of pure frustration with the large number of
-promising and yet ultimately unusable loader generators out there.
+**GREG** is a code generator that produces a header-only OpenGL core and
+extension function loader library tailored to your needs.  It is lovingly
+sculpted from a block of pure frustration with the large number of promising and
+yet ultimately unusable loader generators out there.
 
 The primary sources of inspiration are [flextGL](https://github.com/ginkgo/flextGL)
 and [glad](https://github.com/Dav1dde/glad), in that order.
@@ -18,16 +18,19 @@ GREG is **not yet done**.  Go away.  Shoo.  Come back when it's done.
 
 ## Tutorial
 
-To use GREG, you first need a current OpenGL context.  When you have that, call
-`gregInit`.  If it returns non-zero, you're done.
+Include `GREG/greg.h` where needed.  Define `GREG_IMPLEMENTATION` before
+inclusion in exactly one compilation unit.
+
+Get a current OpenGL context.  Call `gregInit`.  If it returns non-zero, you're
+done.  If it returns zero, something is broken.
 
 
 ## Backend selection
 
 GREG supports loading via native APIs on Windows, OS X and systems running X11,
 and will auto-select the proper backend at compile-time.  GREG also supports
-loading via EGL, GLFW 3 and SDL 2 by defining `_GREG_USE_EGL`, `_GREG_USE_GLFW3`
-or `_GREG_USE_SDL2`, respectively.  This lets it function on systems it does not
+loading via EGL, GLFW 3 and SDL 2 by defining `GREG_USE_EGL`, `GREG_USE_GLFW3`
+or `GREG_USE_SDL2`, respectively.  This lets it function on systems it does not
 yet support natively.
 
 

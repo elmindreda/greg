@@ -500,7 +500,6 @@ int main(int argc, char** argv)
   const Output output = generate_output(manifest, config, spec);
 
   write_file("output/greg.h", generate_content(output, "templates/greg.h.in"));
-  write_file("output/greg.c", generate_content(output, "templates/greg.c.in"));
 
   std::exit(EXIT_SUCCESS);
 }
