@@ -270,8 +270,13 @@ static GLboolean gregValidContext(void)
     }
   }
 
+#if defined(_MSC_VER)
+  if (!sscanf_s(version, "%d.%d", &_greg.major, &_greg.minor))
+    return GL_FALSE;
+#else
   if (!sscanf(version, "%d.%d", &_greg.major, &_greg.minor))
     return GL_FALSE;
+#endif
 
   return GL_TRUE;
 }
