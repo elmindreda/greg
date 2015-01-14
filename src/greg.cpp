@@ -71,6 +71,7 @@ struct Manifest
 
 struct Output
 {
+  wire::string api_name;
   wire::string type_typedefs;
   wire::string enum_definitions;
   wire::string ext_macros;
@@ -304,6 +305,11 @@ Output generate_output(const Manifest& manifest,
 {
   Output output;
 
+  if (config.api == "gl")
+      output.api_name = "OpenGL";
+  else if (config.api == "gles1" ||config.api == "gles2")
+      output.api_name = "OpenGL ES";
+
   for (const wire::string& extension : manifest.extensions)
   {
     wire::string boolean_name = extension;
@@ -421,6 +427,7 @@ wire::string generate_content(const Output& output, const char* path)
 {
   wire::string text = read_file(path);
 
+  text = text.replace("@API_NAME@", output.api_name);
   text = text.replace("@TYPE_TYPEDEFS@", output.type_typedefs);
   text = text.replace("@ENUM_DEFINITIONS@", output.enum_definitions);
   text = text.replace("@EXT_MACROS@", output.ext_macros);

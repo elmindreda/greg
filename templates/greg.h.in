@@ -59,27 +59,26 @@
 extern "C" {
 #endif
 
-/* Client API version macros */
+/* @API_NAME@ version macros */
 @VER_MACROS@
-/* Client API extension macros */
+/* @API_NAME@ extension macros */
 @EXT_MACROS@
-/* Client API version booleans */
+/* @API_NAME@ version booleans */
 @VER_DECLARATIONS@
-/* Client API extension booleans */
+/* @API_NAME@ extension booleans */
 @EXT_DECLARATIONS@
-/* Client API types */
+/* @API_NAME@ types */
 @TYPE_TYPEDEFS@
-/* Client API enumeration values */
+/* @API_NAME@ enumeration values */
 @ENUM_DEFINITIONS@
-/* Client API function typedefs */
+/* @API_NAME@ function typedefs */
 @CMD_TYPEDEFS@
-/* Client API function pointers */
+/* @API_NAME@ function pointers */
 @CMD_DECLARATIONS@
-/* Client API macros */
+/* @API_NAME@ macros */
 @CMD_MACROS@
 
-/*! @brief Initializes the library.
- *  @return `GL_TRUE` if successful, or `GL_FALSE` if an error occurred.
+/* Initializes the library
  */
 GREGDEF int gregInit(void);
 
@@ -133,13 +132,15 @@ static struct
 
 } _greg;
 
-/* Client API version booleans */
+/* @API_NAME@ version booleans */
 @VER_DEFINITIONS@
-/* Client API extension booleans */
+/* @API_NAME@ extension booleans */
 @EXT_DEFINITIONS@
-/* Client API function pointers */
+/* @API_NAME@ function pointers */
 @CMD_DEFINITIONS@
 
+/* Checks whether an @API_NAME@ or context is current
+ */
 static GLboolean gregHasContext(void)
 {
 #if defined(GREG_USE_EGL)
@@ -157,6 +158,8 @@ static GLboolean gregHasContext(void)
 #endif
 }
 
+/* Loads the @API_NAME@ library for function pointer discovery
+ */
 static GLboolean gregLoadLibrary(void)
 {
 #if defined(GREG_USE_EGL)
@@ -178,6 +181,8 @@ static GLboolean gregLoadLibrary(void)
     return GL_TRUE;
 }
 
+/* Frees the loaded @API_NAME@ library
+ */
 static void gregFreeLibrary(void)
 {
 #if defined(GREG_USE_EGL)
@@ -194,6 +199,8 @@ static void gregFreeLibrary(void)
 #endif
 }
 
+/* Returns the address of the requested @API_NAME@ function
+ */
 static GREGglproc gregGetProcAddress(const char* name)
 {
     GREGglproc proc;
@@ -219,6 +226,8 @@ static GREGglproc gregGetProcAddress(const char* name)
     return proc;
 }
 
+/* Checks whether an extension string contains a specific extension
+ */
 static GLboolean gregStringInExtensionString(const char* string,
                                              const char* extensions)
 {
@@ -242,7 +251,9 @@ static GLboolean gregStringInExtensionString(const char* string,
     }
 }
 
-static GLboolean gregValidContext(void)
+/* Parses version numbers from the @API_NAME@ version string
+ */
+static GLboolean gregParseVersionString(void)
 {
     int i;
     const char* version;
@@ -282,11 +293,15 @@ static GLboolean gregValidContext(void)
     return GL_TRUE;
 }
 
+/* Checks whether the specified @API_NAME@ version is supported
+ */
 static GLboolean gregVersionSupported(int major, int minor)
 {
     return major > _greg.major || (major == _greg.major && minor >= _greg.minor);
 }
 
+/* Checks whether the specified @API_NAME@ extension is supported
+ */
 static GLboolean gregExtensionSupported(const char* name)
 {
     const char* e;
@@ -335,18 +350,18 @@ GREGDEF int gregInit(void)
         return GL_FALSE;
     }
 
-    /* Load supported functions */
+    /* Load supported @API_NAME@ functions */
 @CMD_LOADERS@
 
-    if (!gregValidContext())
+    if (!gregParseVersionString())
     {
         gregFreeLibrary();
         return GL_FALSE;
     }
 
-    /* Check supported context versions */
+    /* Check supported @API_NAME@ context versions */
 @VER_LOADERS@
-    /* Check supported extensions */
+    /* Check supported @API_NAME@ extensions */
 @EXT_LOADERS@
 
     gregFreeLibrary();
