@@ -59,23 +59,23 @@
 extern "C" {
 #endif
 
-/* Client API feature and extension macros */
+/* Client API version macros */
 @VER_MACROS@
+/* Client API extension macros */
 @EXT_MACROS@
-
-/* Client API feature and extension booleans */
+/* Client API version booleans */
 @VER_DECLARATIONS@
+/* Client API extension booleans */
 @EXT_DECLARATIONS@
-
 /* Client API types */
 @TYPE_TYPEDEFS@
-
 /* Client API enumeration values */
 @ENUM_DEFINITIONS@
-
-/* Client API functions */
+/* Client API function typedefs */
 @CMD_TYPEDEFS@
+/* Client API function pointers */
 @CMD_DECLARATIONS@
+/* Client API macros */
 @CMD_MACROS@
 
 /*! @brief Initializes the library.
@@ -335,6 +335,7 @@ GREGDEF int gregInit(void)
     return GL_FALSE;
   }
 
+  /* Load supported functions */
 @CMD_LOADERS@
 
   if (!gregValidContext())
@@ -343,8 +344,9 @@ GREGDEF int gregInit(void)
     return GL_FALSE;
   }
 
+  /* Check supported context versions */
 @VER_LOADERS@
-
+  /* Check supported extensions */
 @EXT_LOADERS@
 
   gregFreeLibrary();
