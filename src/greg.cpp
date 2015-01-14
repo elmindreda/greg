@@ -313,7 +313,7 @@ Output generate_output(const Manifest& manifest,
     output.ext_macros += wire::string("#define \1 1\n", extension);
     output.ext_declarations += wire::string("extern int \1;\n", boolean_name);
     output.ext_definitions += wire::string("GREGDEF int \1 = 0;\n", boolean_name);
-    output.ext_loaders += wire::string("  \1 = gregExtensionSupported(\"\2\");\n",
+    output.ext_loaders += wire::string("    \1 = gregExtensionSupported(\"\2\");\n",
                                        boolean_name,
                                        extension);
   }
@@ -330,7 +330,7 @@ Output generate_output(const Manifest& manifest,
     output.ver_macros += wire::string("#define \1 1\n", version.name);
     output.ver_declarations += wire::string("extern int \1;\n", boolean_name);
     output.ver_definitions += wire::string("GREGDEF int \1 = 0;\n", boolean_name);
-    output.ver_loaders += wire::string("  \1 = gregVersionSupported(\2, \3);\n",
+    output.ver_loaders += wire::string("    \1 = gregVersionSupported(\2, \3);\n",
                                        boolean_name,
                                        major, minor);
   }
@@ -381,7 +381,7 @@ Output generate_output(const Manifest& manifest,
     output.cmd_definitions += wire::string("GREGDEF \1 \2 = NULL;\n",
                                            typedef_name,
                                            pointer_name);
-    output.cmd_loaders += wire::string("  \1 = (\2) gregGetProcAddress(\"\3\");\n",
+    output.cmd_loaders += wire::string("    \1 = (\2) gregGetProcAddress(\"\3\");\n",
                                        pointer_name,
                                        typedef_name,
                                        function_name);
