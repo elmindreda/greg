@@ -108,7 +108,7 @@ GREGDEF int gregInit(void);
  #include <OpenGL/OpenGL.h>
 #endif
 
-typedef void (*GREGglproc)(void);
+typedef void (*GREGproc)(void);
 
 static struct
 {
@@ -201,25 +201,25 @@ static void gregFreeLibrary(void)
 
 /* Returns the address of the requested @API_NAME@ function
  */
-static GREGglproc gregGetProcAddress(const char* name)
+static GREGproc gregGetProcAddress(const char* name)
 {
-    GREGglproc proc;
+    GREGproc proc;
 
 #if defined(GREG_USE_EGL)
-    proc = (GREGglproc) eglGetProcAddress(name);
+    proc = (GREGproc) eglGetProcAddress(name);
 #elif defined(GREG_USE_GLFW3)
-    proc = (GREGglproc) glfwGetProcAddress(name);
+    proc = (GREGproc) glfwGetProcAddress(name);
 #elif defined(GREG_USE_SDL2)
-    proc = (GREGglproc) SDL_GL_GetProcAddress(name);
+    proc = (GREGproc) SDL_GL_GetProcAddress(name);
 #elif defined(_WIN32)
-    proc = (GREGglproc) wglGetProcAddress(name);
+    proc = (GREGproc) wglGetProcAddress(name);
     if (!proc)
-        proc = (GREGglproc) GetProcAddress(_greg.wgl.instance, name);
+        proc = (GREGproc) GetProcAddress(_greg.wgl.instance, name);
 #elif defined(__linux__)
-    proc = (GREGglproc) glXGetProcAddress((const GLubyte*) name);
+    proc = (GREGproc) glXGetProcAddress((const GLubyte*) name);
 #elif defined(__APPLE__)
     CFStringRef native = CFStringCreateWithCString(kCFAllocatorDefault, name, kCFStringEncodingASCII);
-    proc = (GREGglproc) CFBundleGetFunctionPointerForName(_greg.nsgl.framework, native);
+    proc = (GREGproc) CFBundleGetFunctionPointerForName(_greg.nsgl.framework, native);
     CFRelease(native);
 #endif
 
