@@ -59,7 +59,7 @@ public:
   unsigned int minor;
 };
 
-struct Config
+struct Target
 {
   wire::string api;
   wire::string profile;
@@ -227,7 +227,7 @@ void remove_from_manifest(Manifest& manifest, const pugi::xml_node node)
 // Applies a <feature> or <extension> element to the specified manifest
 //
 void update_manifest(Manifest& manifest,
-                     const Config& config,
+                     const Target& target,
                      const pugi::xml_node node)
 {
   for (const pugi::xml_node rn : node.children("require"))
@@ -236,15 +236,15 @@ void update_manifest(Manifest& manifest,
   // Apply <remove> tags for the selected profile
   for (const pugi::xml_node rn : node.children("remove"))
   {
-    if (rn.attribute("profile").value() == config.profile)
+    if (rn.attribute("profile").value() == target.profile)
       remove_from_manifest(manifest, rn);
   }
 }
 
 // Generates a manifest from the specified document according to the
-// specified configuration
+// specified target
 //
-Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
+Manifest generate_manifest(const Target& target, const pugi::xml_document& spec)
 {
   Manifest manifest;
 
@@ -253,9 +253,9 @@ Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
     const pugi::xml_node fn = ref.node();
     const Version version(fn.attribute("number").as_string());
 
-    if (fn.attribute("api").value() == config.api && version <= config.version)
+    if (fn.attribute("api").value() == target.api && version <= target.version)
     {
-      update_manifest(manifest, config, fn);
+      update_manifest(manifest, target, fn);
 
       const Feature feature = { fn.attribute("name").value(), version };
       manifest.features.push_back(feature);
@@ -267,9 +267,9 @@ Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
     const pugi::xml_node en = ref.node();
     const wire::string name(en.attribute("name").value());
 
-    if (config.extensions.count(name))
+    if (target.extensions.count(name))
     {
-      const wire::string n = config.api + config.profile;
+      const wire::string n = target.api + target.profile;
       const wire::strings p =
         wire::string(en.attribute("supported").value()).split("|");
 
@@ -279,7 +279,7 @@ Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
         continue;
       }
 
-      update_manifest(manifest, config, en);
+      update_manifest(manifest, target, en);
       manifest.extensions.push_back(name);
     }
   }
@@ -302,7 +302,7 @@ Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
   {
     const pugi::xml_node tn = ref.node();
 
-    if (manifest.types.count(type_name(tn)) && api_name(tn) == config.api)
+    if (manifest.types.count(type_name(tn)) && api_name(tn) == target.api)
       manifest.types.insert(tn.attribute("requires").value());
   }
 
@@ -310,17 +310,17 @@ Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
 }
 
 // Generates output strings from the specified document according to the
-// specified manifest and configuration
+// specified manifest and target
 //
 Output generate_output(const Manifest& manifest,
-                       const Config& config,
+                       const Target& target,
                        const pugi::xml_document& spec)
 {
   Output output;
 
-  if (config.api == "gl")
+  if (target.api == "gl")
       output.api_name = "OpenGL";
-  else if (config.api == "gles1" ||config.api == "gles2")
+  else if (target.api == "gles1" || target.api == "gles2")
       output.api_name = "OpenGL ES";
 
   for (const wire::string& extension : manifest.extensions)
@@ -356,7 +356,7 @@ Output generate_output(const Manifest& manifest,
   {
     const pugi::xml_node tn = ref.node();
 
-    if (!manifest.types.count(type_name(tn)) || api_name(tn) != config.api)
+    if (!manifest.types.count(type_name(tn)) || api_name(tn) != target.api)
       continue;
 
     output.type_typedefs += wire::string("\1\n", scrape_type_text(tn));
@@ -465,7 +465,7 @@ int main(int argc, char** argv)
   enum Option { API, CORE, VERSION, EXTENSIONS, HELP };
 
   int ch;
-  Config config = { "gl", "", { 4, 5 } };
+  Target target = { "gl", "", { 4, 5 } };
   const option options[] =
   {
     { "api", 1, NULL, Option::API },
@@ -481,20 +481,20 @@ int main(int argc, char** argv)
     switch (ch)
     {
       case Option::API:
-        config.api = optarg;
+        target.api = optarg;
         break;
 
       case Option::CORE:
-        config.profile = "core";
+        target.profile = "core";
         break;
 
       case Option::VERSION:
-        config.version = Version(optarg);
+        target.version = Version(optarg);
         break;
 
       case Option::EXTENSIONS:
         for (auto e : wire::string(optarg).split(","))
-          config.extensions.insert(e);
+          target.extensions.insert(e);
         break;
 
       case 'h':
@@ -518,8 +518,8 @@ int main(int argc, char** argv)
   if (!result)
     error("Failed to parse file");
 
-  const Manifest manifest = generate_manifest(config, spec);
-  const Output output = generate_output(manifest, config, spec);
+  const Manifest manifest = generate_manifest(target, spec);
+  const Output output = generate_output(manifest, target, spec);
 
   write_file("output/greg.h", generate_content(output, "templates/greg.h.in"));
 
