@@ -319,15 +319,15 @@ Output generate_output(const Manifest& manifest,
   Output output;
 
   if (target.api == "gl")
-      output.api_name = "OpenGL";
+    output.api_name = "OpenGL";
   else if (target.api == "gles1" || target.api == "gles2")
-      output.api_name = "OpenGL ES";
+    output.api_name = "OpenGL ES";
 
   for (const wire::string& extension : manifest.extensions)
   {
     wire::string boolean_name = extension;
     if (boolean_name.starts_with("GL_"))
-        boolean_name.replace(0, 3, "GREG_");
+      boolean_name.replace(0, 3, "GREG_");
 
     output.ext_macros += wire::string("#define \1 1\n", extension);
     output.ext_declarations += wire::string("extern int \1;\n", boolean_name);
@@ -341,7 +341,7 @@ Output generate_output(const Manifest& manifest,
   {
     wire::string boolean_name = feature.name;
     if (boolean_name.starts_with("GL_"))
-        boolean_name.replace(0, 3, "GREG_");
+      boolean_name.replace(0, 3, "GREG_");
 
     output.ver_macros += wire::string("#define \1 1\n", feature.name);
     output.ver_declarations += wire::string("extern int \1;\n", boolean_name);
