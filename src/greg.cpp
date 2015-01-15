@@ -43,14 +43,6 @@
 namespace
 {
 
-enum Option
-{
-  API,
-  CORE,
-  VERSION,
-  EXTENSIONS
-};
-
 class Version
 {
 public:
@@ -119,6 +111,7 @@ void usage()
   std::puts("  --core                   use the core profile (OpenGL only)");
   std::puts("  --version=VERSION        highest API version to generate for");
   std::puts("  --extensions=EXTENSIONS  list of extensions to generate for");
+  std::puts("  -h, --help               show this help");
 }
 
 void error(const char* message)
@@ -474,8 +467,9 @@ wire::string generate_content(const Output& output, const char* path)
 
 int main(int argc, char** argv)
 {
-  int ch;
+  enum Option { API, CORE, VERSION, EXTENSIONS, HELP };
 
+  int ch;
   Config config = { "gl", { 4, 5 }, false };
   wire::string target = ".";
   const option options[] =
@@ -484,6 +478,7 @@ int main(int argc, char** argv)
     { "core", 0, NULL, Option::CORE },
     { "version", 1, NULL, Option::VERSION },
     { "extensions", 1, NULL, Option::EXTENSIONS },
+    { "help", 0, NULL, Option::HELP },
     { NULL, 0, NULL, 0 }
   };
 
@@ -509,6 +504,7 @@ int main(int argc, char** argv)
         break;
 
       case 'h':
+      case Option::HELP:
         usage();
         std::exit(EXIT_SUCCESS);
 
