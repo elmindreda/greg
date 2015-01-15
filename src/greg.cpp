@@ -29,11 +29,16 @@
 
 #include <cmath>
 #include <cstring>
+#include <cstdio>
 #include <cstdlib>
 
 #include <wire.hpp>
 #include <pugixml.hpp>
 #include <getopt.h>
+
+// WTF, GCC?!
+#undef major
+#undef minor
 
 namespace
 {
@@ -46,23 +51,40 @@ enum Option
   EXTENSIONS
 };
 
+class Version
+{
+public:
+  Version() { }
+  Version(unsigned int major, unsigned int minor): major(major), minor(minor) { }
+  Version(const char* string)
+  {
+    std::sscanf(string, "%u.%u", &major, &minor);
+  }
+  bool operator <= (const Version& other) const
+  {
+    return major < other.major || (major == other.major && minor <= other.minor);
+  }
+  unsigned int major;
+  unsigned int minor;
+};
+
 struct Config
 {
   wire::string api;
-  float version;
+  Version version;
   bool core;
   std::set<wire::string> extensions;
 };
 
-struct Version
+struct Feature
 {
   wire::string name;
-  float number;
+  Version version;
 };
 
 struct Manifest
 {
-  std::vector<Version> versions;
+  std::vector<Feature> features;
   std::vector<wire::string> extensions;
   std::set<wire::string> types;
   std::set<wire::string> commands;
@@ -219,7 +241,7 @@ void update_manifest(Manifest& manifest,
   if (config.core)
   {
     // The core profile removes types, enums and commands added by
-    // previous versions
+    // previous features
     for (const pugi::xml_node rn : node.children("remove"))
       remove_from_manifest(manifest, rn);
   }
@@ -235,14 +257,14 @@ Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
   for (const auto ref : spec.select_nodes("/registry/feature"))
   {
     const pugi::xml_node fn = ref.node();
-    const float number = fn.attribute("number").as_float();
+    const Version version(fn.attribute("number").as_string());
 
-    if (fn.attribute("api").value() == config.api && number <= config.version)
+    if (fn.attribute("api").value() == config.api && version <= config.version)
     {
       update_manifest(manifest, config, fn);
 
-      const Version version = { fn.attribute("name").value(), number };
-      manifest.versions.push_back(version);
+      const Feature feature = { fn.attribute("name").value(), version };
+      manifest.features.push_back(feature);
     }
   }
 
@@ -324,21 +346,19 @@ Output generate_output(const Manifest& manifest,
                                        extension);
   }
 
-  for (const Version& version : manifest.versions)
+  for (const Feature& feature : manifest.features)
   {
-    wire::string boolean_name = version.name;
+    wire::string boolean_name = feature.name;
     if (boolean_name.starts_with("GL_"))
         boolean_name.replace(0, 3, "GREG_");
 
-    const int major = (int) std::floor(version.number);
-    const int minor = (int) ((version.number - (float) major) * 10.5f);
-
-    output.ver_macros += wire::string("#define \1 1\n", version.name);
+    output.ver_macros += wire::string("#define \1 1\n", feature.name);
     output.ver_declarations += wire::string("extern int \1;\n", boolean_name);
     output.ver_definitions += wire::string("GREGDEF int \1 = 0;\n", boolean_name);
     output.ver_loaders += wire::string("    \1 = gregVersionSupported(\2, \3);\n",
                                        boolean_name,
-                                       major, minor);
+                                       feature.version.major,
+                                       feature.version.minor);
   }
 
   for (const auto ref : spec.select_nodes("/registry/types/type"))
@@ -453,7 +473,7 @@ int main(int argc, char** argv)
 {
   int ch;
 
-  Config config = { "gl", 4.4f, false };
+  Config config = { "gl", { 4, 5 }, false };
   wire::string target = ".";
   const option options[] =
   {
@@ -477,7 +497,7 @@ int main(int argc, char** argv)
         break;
 
       case Option::VERSION:
-        config.version = wire::as<float>(optarg);
+        config.version = Version(optarg);
         break;
 
       case Option::EXTENSIONS:
