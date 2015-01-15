@@ -62,8 +62,8 @@ public:
 struct Config
 {
   wire::string api;
+  wire::string profile;
   Version version;
-  bool core;
   std::set<wire::string> extensions;
 };
 
@@ -233,11 +233,10 @@ void update_manifest(Manifest& manifest,
   for (const pugi::xml_node rn : node.children("require"))
     add_to_manifest(manifest, rn);
 
-  if (config.core)
+  // Apply <remove> tags for the selected profile
+  for (const pugi::xml_node rn : node.children("remove"))
   {
-    // The core profile removes types, enums and commands added by
-    // previous features
-    for (const pugi::xml_node rn : node.children("remove"))
+    if (rn.attribute("profile").value() == config.profile)
       remove_from_manifest(manifest, rn);
   }
 }
@@ -270,14 +269,11 @@ Manifest generate_manifest(const Config& config, const pugi::xml_document& spec)
 
     if (config.extensions.count(name))
     {
-      wire::string api = config.api;
-      if (config.api == "gl" && config.core)
-        api = "glcore";
-
-      const wire::strings apis =
+      const wire::string n = config.api + config.profile;
+      const wire::strings p =
         wire::string(en.attribute("supported").value()).split("|");
 
-      if (std::find(apis.begin(), apis.end(), api) == apis.end())
+      if (std::find(p.begin(), p.end(), n) == p.end())
       {
         std::cout << wire::string("Excluding unsupported extension \1\n", name);
         continue;
@@ -469,7 +465,7 @@ int main(int argc, char** argv)
   enum Option { API, CORE, VERSION, EXTENSIONS, HELP };
 
   int ch;
-  Config config = { "gl", { 4, 5 }, false };
+  Config config = { "gl", "", { 4, 5 } };
   const option options[] =
   {
     { "api", 1, NULL, Option::API },
@@ -489,7 +485,7 @@ int main(int argc, char** argv)
         break;
 
       case Option::CORE:
-        config.core = true;
+        config.profile = "core";
         break;
 
       case Option::VERSION:
