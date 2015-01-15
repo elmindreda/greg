@@ -76,4 +76,5 @@ GREG has been successfully built with the following C++11 compilers:
 
  - Clang 3.0 with libstdc++
  - Visual C++ 12.0 (VS 2013)
+ - GCC 4.9.2 cygstdc++
 
