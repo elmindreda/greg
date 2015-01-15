@@ -306,7 +306,7 @@ static GLboolean gregExtensionSupported(const char* name)
 {
     const char* e;
 
-#if defined(GL_VERSION_3_0)
+#if defined(GL_VERSION_3_0) || defined(GL_ES_VERSION_3_0)
     if (_greg.major >= 3)
     {
         GLint i, count;
@@ -328,7 +328,7 @@ static GLboolean gregExtensionSupported(const char* name)
 
         return GL_FALSE;
     }
-#endif /*GL_VERSION_3_0*/
+#endif
 
     if (!glGetString)
         return GL_FALSE;
