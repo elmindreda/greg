@@ -470,7 +470,6 @@ int main(int argc, char** argv)
 
   int ch;
   Config config = { "gl", { 4, 5 }, false };
-  wire::string target = ".";
   const option options[] =
   {
     { "api", 1, NULL, Option::API },
