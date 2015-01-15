@@ -20,7 +20,6 @@
 // 3. This notice may not be removed or altered from any source
 //    distribution.
 
-#include <iostream>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -265,7 +264,7 @@ Manifest generate_manifest(const Target& target, const pugi::xml_document& spec)
   for (const auto ref : spec.select_nodes("/registry/extensions/extension"))
   {
     const pugi::xml_node en = ref.node();
-    const wire::string name(en.attribute("name").value());
+    const char* name = en.attribute("name").value();
 
     if (target.extensions.count(name))
     {
@@ -275,7 +274,7 @@ Manifest generate_manifest(const Target& target, const pugi::xml_document& spec)
 
       if (std::find(p.begin(), p.end(), n) == p.end())
       {
-        std::cout << wire::string("Excluding unsupported extension \1\n", name);
+        std::printf("Excluding unsupported extension %s\n", name);
         continue;
       }
 
