@@ -34,8 +34,7 @@ you're out of luck.
 GREG supports loading via native APIs on Windows, OS X and systems running X11,
 and will auto-select the proper backend at compile-time.  GREG also supports
 loading via EGL, GLFW 3 and SDL 2 by defining `GREG_USE_EGL`, `GREG_USE_GLFW3`
-or `GREG_USE_SDL2`, respectively.  This lets it function on systems it does not
-yet support natively.
+or `GREG_USE_SDL2`, respectively.
 
 
 ## FAQ
