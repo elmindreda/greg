@@ -18,6 +18,9 @@ GREG is **not yet done**.  Go away.  Shoo.  Come back when it's done.
 
 ## Tutorial
 
+Compile and run `greg` to generate the desired `greg.h` header library.  See
+`greg --help` for details.
+
 Include `greg.h` where needed.  Define `GREG_IMPLEMENTATION` before inclusion in
 exactly one compilation unit.
 
