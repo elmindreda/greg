@@ -18,8 +18,8 @@ GREG is **not yet done**.  Go away.  Shoo.  Come back when it's done.
 
 ## Tutorial
 
-Include `GREG/greg.h` where needed.  Define `GREG_IMPLEMENTATION` before
-inclusion in exactly one compilation unit.
+Include `greg.h` where needed.  Define `GREG_IMPLEMENTATION` before inclusion in
+exactly one compilation unit.
 
 Get a current OpenGL context.  Call `gregInit`.  If it returns non-zero, you're
 done.  If it returns zero, something is broken.
