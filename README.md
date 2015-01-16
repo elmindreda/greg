@@ -1,7 +1,7 @@
 # GREG
 
-**GREG** is a code generator that produces a header-only OpenGL core and
-extension function loader library tailored to your needs.  It is lovingly
+**GREG** is a code generator that produces an stb-style header-only OpenGL and
+OpenGL ES function loader library tailored to your needs.  It is lovingly
 sculpted from a block of pure frustration with the large number of promising and
 yet ultimately unusable loader generators out there.
 
@@ -21,8 +21,9 @@ GREG is **not yet done**.  Go away.  Shoo.  Come back when it's done.
 Include `greg.h` where needed.  Define `GREG_IMPLEMENTATION` before inclusion in
 exactly one compilation unit.
 
-Get a current OpenGL context.  Call `gregInit`.  If it returns non-zero, you're
-done.  If it returns zero, something is broken.
+Get a current OpenGL or OpenGL ES context somehow.  Call `gregInit`.  If it
+returns non-zero, you're done.  If it returns zero something is broken and
+you're out of luck.
 
 
 ## Backend selection
